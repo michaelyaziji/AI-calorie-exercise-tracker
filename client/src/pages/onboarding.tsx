@@ -29,12 +29,34 @@ type OnboardingStep = "credentials" | "gender" | "measurements" | "activity" | "
 
 const STEPS = ["credentials", "gender", "measurements", "activity", "social"] as const;
 
-const extendedUserSchema = insertUserSchema.extend({
-  confirmPassword: z.string(),
-}).refine((data) => data.password === data.confirmPassword, {
-  message: "Passwords don't match",
-  path: ["confirmPassword"],
-});
+const stepValidation = {
+  credentials: z.object({
+    username: z.string().min(3, "Username must be at least 3 characters"),
+    password: z.string().min(8, "Password must be at least 8 characters"),
+    confirmPassword: z.string(),
+  }).refine((data) => data.password === data.confirmPassword, {
+    message: "Passwords don't match",
+    path: ["confirmPassword"],
+  }),
+  gender: z.object({
+    gender: z.enum(["male", "female", "other"], {
+      required_error: "Please select your gender",
+    }),
+  }),
+  measurements: z.object({
+    height: z.number().min(50).max(300),
+    weight: z.number().min(20).max(500),
+    targetWeight: z.number().min(20).max(500),
+  }),
+  activity: z.object({
+    workoutsPerWeek: z.number().min(0).max(14),
+  }),
+  social: z.object({
+    socialSource: z.string({
+      required_error: "Please select where you heard about us",
+    }),
+  }),
+};
 
 export default function OnboardingPage() {
   const [, navigate] = useLocation();
@@ -45,7 +67,9 @@ export default function OnboardingPage() {
   const progress = ((currentStepIndex + 1) / STEPS.length) * 100;
 
   const form = useForm({
-    resolver: zodResolver(extendedUserSchema),
+    resolver: zodResolver(insertUserSchema.extend({
+      confirmPassword: z.string(),
+    })),
     defaultValues: {
       username: "",
       password: "",
@@ -54,15 +78,15 @@ export default function OnboardingPage() {
       height: 170,
       weight: 70,
       targetWeight: 65,
-      activityLevel: "",
-      workoutsPerWeek: 0,
+      activityLevel: "moderate",
+      workoutsPerWeek: 3,
       socialSource: "",
     },
+    mode: "onChange",
   });
 
   const createUser = useMutation({
     mutationFn: async (data: any) => {
-      // Hash password before sending to server
       const hashedPassword = await bcrypt.hash(data.password, 10);
       const { confirmPassword, ...userData } = {
         ...data,
@@ -88,16 +112,39 @@ export default function OnboardingPage() {
     },
   });
 
+  const validateCurrentStep = () => {
+    const currentStepSchema = stepValidation[step];
+    const currentStepData = form.getValues();
+
+    try {
+      currentStepSchema.parse(currentStepData);
+      return true;
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        error.errors.forEach((err) => {
+          toast({
+            title: "Validation Error",
+            description: err.message,
+            variant: "destructive",
+          });
+        });
+      }
+      return false;
+    }
+  };
+
   const onSubmit = form.handleSubmit((data) => {
     if (step !== "social") {
-      const nextSteps: Record<OnboardingStep, OnboardingStep> = {
-        credentials: "gender",
-        gender: "measurements",
-        measurements: "activity",
-        activity: "social",
-        social: "social",
-      };
-      setStep(nextSteps[step]);
+      if (validateCurrentStep()) {
+        const nextSteps: Record<OnboardingStep, OnboardingStep> = {
+          credentials: "gender",
+          gender: "measurements",
+          measurements: "activity",
+          activity: "social",
+          social: "social",
+        };
+        setStep(nextSteps[step]);
+      }
     } else {
       createUser.mutate(data);
     }
@@ -128,7 +175,7 @@ export default function OnboardingPage() {
                       <FormItem>
                         <FormLabel>Username</FormLabel>
                         <FormControl>
-                          <Input {...field} />
+                          <Input {...field} autoComplete="username" />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -141,7 +188,11 @@ export default function OnboardingPage() {
                       <FormItem>
                         <FormLabel>Password</FormLabel>
                         <FormControl>
-                          <Input type="password" {...field} />
+                          <Input 
+                            type="password" 
+                            {...field} 
+                            autoComplete="new-password"
+                          />
                         </FormControl>
                         <FormDescription>
                           Must be at least 8 characters long
@@ -157,7 +208,11 @@ export default function OnboardingPage() {
                       <FormItem>
                         <FormLabel>Confirm Password</FormLabel>
                         <FormControl>
-                          <Input type="password" {...field} />
+                          <Input 
+                            type="password" 
+                            {...field}
+                            autoComplete="new-password"
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
