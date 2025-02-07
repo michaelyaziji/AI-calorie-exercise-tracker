@@ -37,9 +37,20 @@ export const progress = pgTable("progress", {
   timestamp: timestamp("timestamp").notNull().defaultNow(),
 });
 
+export const exercises = pgTable("exercises", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull(),
+  type: text("type").notNull(), 
+  intensity: text("intensity"), 
+  duration: integer("duration"), 
+  description: text("description"), 
+  timestamp: timestamp("timestamp").notNull().defaultNow(),
+});
+
 export const insertUserSchema = createInsertSchema(users).omit({ id: true });
 export const insertMealSchema = createInsertSchema(meals).omit({ id: true, timestamp: true });
 export const insertProgressSchema = createInsertSchema(progress).omit({ id: true, timestamp: true });
+export const insertExerciseSchema = createInsertSchema(exercises).omit({ id: true, timestamp: true });
 
 export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
@@ -47,3 +58,5 @@ export type Meal = typeof meals.$inferSelect;
 export type InsertMeal = z.infer<typeof insertMealSchema>;
 export type Progress = typeof progress.$inferSelect;
 export type InsertProgress = z.infer<typeof insertProgressSchema>;
+export type Exercise = typeof exercises.$inferSelect;
+export type InsertExercise = z.infer<typeof insertExerciseSchema>;

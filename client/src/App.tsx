@@ -6,6 +6,7 @@ import NotFound from "@/pages/not-found";
 import OnboardingPage from "@/pages/onboarding";
 import DashboardPage from "@/pages/dashboard";
 import MealLogPage from "@/pages/meal-log";
+import ExerciseLogPage from "@/pages/exercise-log";
 import NavBar from "@/components/nav-bar";
 
 function Router() {
@@ -14,6 +15,7 @@ function Router() {
       <Route path="/" component={OnboardingPage} />
       <Route path="/dashboard" component={DashboardPage} />
       <Route path="/meal-log" component={MealLogPage} />
+      <Route path="/exercise-log" component={ExerciseLogPage} />
       <Route component={NotFound} />
     </Switch>
   );
