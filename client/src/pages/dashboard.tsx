@@ -1,13 +1,21 @@
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Progress } from "@/components/ui/progress";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import ProgressChart from "@/components/progress-chart";
 import DailyRecommendations from "@/components/daily-recommendations";
+import DateSelector from "@/components/date-selector";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { User, Meal, Progress as ProgressType, Exercise } from "@shared/schema";
-import { format } from "date-fns";
+import { format, isSameDay } from "date-fns";
 
 export default function DashboardPage() {
+  const [selectedDate, setSelectedDate] = useState(() => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return today;
+  });
+
   const { data: user, isLoading: isLoadingUser } = useQuery<User>({
     queryKey: ["/api/users/1"], // Hardcoded for demo
   });
@@ -38,26 +46,28 @@ export default function DashboardPage() {
     return <div>Error loading data</div>;
   }
 
-  // Filter today's data
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-
-  const todaysMeals = meals.filter(meal => {
+  // Filter data for selected date
+  const selectedMeals = meals.filter(meal => {
     const mealDate = new Date(meal.timestamp);
     mealDate.setHours(0, 0, 0, 0);
-    return mealDate.getTime() === today.getTime();
+    return isSameDay(mealDate, selectedDate);
   });
 
-  const todaysExercises = exercises.filter(exercise => {
+  const selectedExercises = exercises.filter(exercise => {
     const exerciseDate = new Date(exercise.timestamp);
     exerciseDate.setHours(0, 0, 0, 0);
-    return exerciseDate.getTime() === today.getTime();
+    return isSameDay(exerciseDate, selectedDate);
   });
 
   const weightProgress = ((user.weight - user.targetWeight) / (user.weight - user.targetWeight)) * 100;
 
   return (
     <div className="space-y-6 pb-16">
+      <DateSelector 
+        selectedDate={selectedDate}
+        onDateChange={setSelectedDate}
+      />
+
       <Card>
         <CardHeader>
           <CardTitle>Weight Goal Progress</CardTitle>
@@ -73,7 +83,7 @@ export default function DashboardPage() {
         </CardContent>
       </Card>
 
-      <DailyRecommendations user={user} todaysMeals={todaysMeals} />
+      <DailyRecommendations user={user} todaysMeals={selectedMeals} />
 
       {progress.length > 0 && (
         <ProgressChart data={progress} />
@@ -86,7 +96,7 @@ export default function DashboardPage() {
               <CardTitle>Latest Meals</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              {meals.slice(-2).reverse().map((meal) => (
+              {selectedMeals.map((meal) => (
                 <div key={meal.id} className="flex gap-4 border-b pb-4 last:border-0 last:pb-0">
                   <img
                     src={meal.imageUrl}
@@ -95,7 +105,7 @@ export default function DashboardPage() {
                   />
                   <div className="flex-1">
                     <div className="text-sm text-muted-foreground">
-                      {format(new Date(meal.timestamp), "MMM d, h:mm a")}
+                      {format(new Date(meal.timestamp), "h:mm a")}
                     </div>
                     <div className="grid grid-cols-4 gap-2 mt-2 text-center">
                       <div>
@@ -125,16 +135,16 @@ export default function DashboardPage() {
         {exercises.length > 0 && (
           <Card>
             <CardHeader>
-              <CardTitle>Recent Exercises</CardTitle>
+              <CardTitle>Exercises</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              {exercises.slice(-2).reverse().map((exercise) => (
+              {selectedExercises.map((exercise) => (
                 <div key={exercise.id} className="border-b pb-4 last:border-0 last:pb-0">
                   <div className="flex justify-between items-start">
                     <div>
                       <div className="font-medium capitalize">{exercise.type}</div>
                       <div className="text-sm text-muted-foreground">
-                        {format(new Date(exercise.timestamp), "MMM d, h:mm a")}
+                        {format(new Date(exercise.timestamp), "h:mm a")}
                       </div>
                     </div>
                     <div className="text-right">
