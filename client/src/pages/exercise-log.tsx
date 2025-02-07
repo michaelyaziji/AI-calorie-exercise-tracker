@@ -33,7 +33,7 @@ export default function ExerciseLogPage() {
 
   const mutation = useMutation({
     mutationFn: async (data: any) => {
-      return await apiRequest('/api/exercises', 'POST', data);
+      return await apiRequest("POST", '/api/exercises', data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/exercises"] });
