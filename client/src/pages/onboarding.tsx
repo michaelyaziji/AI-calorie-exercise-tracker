@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useLocation } from "wouter";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { insertUserSchema, InsertUser } from "@shared/schema";
+import { insertUserSchema } from "@shared/schema";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -21,7 +21,6 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { SiInstagram, SiFacebook, SiTiktok, SiYoutube, SiGoogle } from "react-icons/si";
 import { Tv } from "lucide-react";
-import { nanoid } from 'nanoid';
 
 type OnboardingStep = "gender" | "measurements" | "activity" | "social";
 
@@ -35,45 +34,30 @@ export default function OnboardingPage() {
   const currentStepIndex = STEPS.indexOf(step);
   const progress = ((currentStepIndex + 1) / STEPS.length) * 100;
 
-  // Generate secure random credentials
-  const generateSecureCredentials = () => ({
-    username: `user_${nanoid(10)}`,
-    password: nanoid(16),  // 16 character random string for better security
-  });
-
-  const form = useForm<InsertUser>({
+  const form = useForm({
     resolver: zodResolver(insertUserSchema),
     defaultValues: {
-      ...generateSecureCredentials(),
-      gender: "male",  // Set a default value that matches the enum
+      username: Math.random().toString(36).slice(2, 10),
+      password: Math.random().toString(36).slice(2, 10),
+      gender: "",
       height: 170,
       weight: 70,
       targetWeight: 65,
-      activityLevel: "moderate",  // Set a default value that matches the enum
+      activityLevel: "",
       workoutsPerWeek: 0,
       socialSource: "",
     },
   });
 
   const createUser = useMutation({
-    mutationFn: async (data: InsertUser) => {
-      try {
-        const res = await apiRequest("POST", "/api/users", data);
-        if (!res.ok) {
-          throw new Error('Failed to create user');
-        }
-        return res.json();
-      } catch (error) {
-        throw new Error(error instanceof Error ? error.message : 'Unknown error occurred');
-      }
+    mutationFn: async (data: any) => {
+      const res = await apiRequest("POST", "/api/users", data);
+      return res.json();
     },
-    onSuccess: (data) => {
-      // Store credentials securely
-      localStorage.setItem('userId', data.id.toString());
+    onSuccess: () => {
       toast({
         title: "Welcome!",
-        description: "Your account has been created successfully. Please save your credentials.",
-        duration: 10000, // 10 seconds
+        description: "Your account has been created successfully.",
       });
       navigate("/dashboard");
     },
@@ -126,19 +110,15 @@ export default function OnboardingPage() {
                           defaultValue={field.value}
                           className="flex flex-col gap-4"
                         >
-                          {[
-                            { label: "Male", value: "male" },
-                            { label: "Female", value: "female" },
-                            { label: "Other", value: "other" }
-                          ].map(({ label, value }) => (
+                          {["Male", "Female", "Other"].map((option) => (
                             <FormItem
-                              key={value}
+                              key={option}
                               className="flex items-center space-x-3 space-y-0"
                             >
                               <FormControl>
-                                <RadioGroupItem value={value} />
+                                <RadioGroupItem value={option.toLowerCase()} />
                               </FormControl>
-                              <FormLabel className="font-normal">{label}</FormLabel>
+                              <FormLabel className="font-normal">{option}</FormLabel>
                             </FormItem>
                           ))}
                         </RadioGroup>
@@ -221,32 +201,39 @@ export default function OnboardingPage() {
                 <h1 className="text-2xl font-bold mb-6">How active are you?</h1>
                 <FormField
                   control={form.control}
-                  name="activityLevel"
+                  name="workoutsPerWeek"
                   render={({ field }) => (
                     <FormItem>
                       <FormControl>
                         <RadioGroup
-                          onValueChange={field.onChange}
-                          defaultValue={field.value}
+                          onValueChange={(val) => field.onChange(parseInt(val))}
+                          defaultValue={field.value.toString()}
                           className="flex flex-col gap-4"
                         >
-                          {[
-                            { value: "sedentary", label: "Sedentary (Little to no exercise)" },
-                            { value: "light", label: "Light (Light exercise/sports 1-3 days/week)" },
-                            { value: "moderate", label: "Moderate (Moderate exercise/sports 3-5 days/week)" },
-                            { value: "active", label: "Active (Hard exercise/sports 6-7 days/week)" },
-                            { value: "very_active", label: "Very Active (Very hard exercise/sports & physical job)" }
-                          ].map(({ value, label }) => (
-                            <FormItem
-                              key={value}
-                              className="flex items-center space-x-3 space-y-0"
-                            >
-                              <FormControl>
-                                <RadioGroupItem value={value} />
-                              </FormControl>
-                              <FormLabel className="font-normal">{label}</FormLabel>
-                            </FormItem>
-                          ))}
+                          <FormItem className="flex items-center space-x-3 space-y-0">
+                            <FormControl>
+                              <RadioGroupItem value="0" />
+                            </FormControl>
+                            <FormLabel className="font-normal">
+                              0-2 (Workouts now and then)
+                            </FormLabel>
+                          </FormItem>
+                          <FormItem className="flex items-center space-x-3 space-y-0">
+                            <FormControl>
+                              <RadioGroupItem value="3" />
+                            </FormControl>
+                            <FormLabel className="font-normal">
+                              3-5 (A few workouts per week)
+                            </FormLabel>
+                          </FormItem>
+                          <FormItem className="flex items-center space-x-3 space-y-0">
+                            <FormControl>
+                              <RadioGroupItem value="6" />
+                            </FormControl>
+                            <FormLabel className="font-normal">
+                              6+ (Dedicated athlete)
+                            </FormLabel>
+                          </FormItem>
                         </RadioGroup>
                       </FormControl>
                       <FormMessage />
