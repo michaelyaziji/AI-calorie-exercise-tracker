@@ -13,7 +13,14 @@ import { useToast } from "@/hooks/use-toast";
 import type { Exercise } from "@shared/schema";
 import { z } from "zod";
 
-type ExerciseType = "run" | "weightlifting" | "custom";
+// Map frontend exercise types to backend types
+const exerciseTypeMap = {
+  run: "cardio",
+  weightlifting: "strength",
+  custom: "other",
+} as const;
+
+type ExerciseType = keyof typeof exerciseTypeMap;
 type IntensityLevel = "high" | "medium" | "low";
 type ExerciseFormData = z.infer<typeof insertExerciseSchema>;
 
@@ -29,11 +36,10 @@ export default function ExerciseLogPage() {
     resolver: zodResolver(insertExerciseSchema),
     defaultValues: {
       userId: 1, // Hardcoded for demo
-      type: "",
+      type: "other",
       intensity: "medium",
       duration: 15,
       description: "",
-      timestamp: new Date().toISOString(),
     },
   });
 
@@ -64,23 +70,14 @@ export default function ExerciseLogPage() {
   });
 
   const onSubmit = (data: ExerciseFormData) => {
-    const exerciseData: ExerciseFormData = {
+    const exerciseData = {
       ...data,
       userId: 1, // Hardcoded for demo
-      timestamp: new Date().toISOString(),
+      type: selectedType ? exerciseTypeMap[selectedType] : "other",
     };
 
-    if (selectedType === "custom") {
-      mutation.mutate(exerciseData);
-    } else if (selectedType) {
-      mutation.mutate({
-        ...exerciseData,
-        type: selectedType,
-        intensity,
-        duration,
-        description: `${selectedType} workout for ${duration} minutes at ${intensity} intensity`,
-      });
-    }
+    console.log("Submitting exercise data:", exerciseData);
+    mutation.mutate(exerciseData);
   };
 
   const renderExerciseTypeSelection = () => (
@@ -90,7 +87,7 @@ export default function ExerciseLogPage() {
         className="h-32 flex flex-col gap-2"
         onClick={() => {
           setSelectedType("run");
-          form.setValue("type", "run");
+          form.setValue("type", "cardio");
         }}
       >
         <Timer className="h-8 w-8" />
@@ -103,7 +100,7 @@ export default function ExerciseLogPage() {
         className="h-32 flex flex-col gap-2"
         onClick={() => {
           setSelectedType("weightlifting");
-          form.setValue("type", "weightlifting");
+          form.setValue("type", "strength");
         }}
       >
         <Dumbbell className="h-8 w-8" />
@@ -116,7 +113,7 @@ export default function ExerciseLogPage() {
         className="h-32 flex flex-col gap-2"
         onClick={() => {
           setSelectedType("custom");
-          form.setValue("type", "custom");
+          form.setValue("type", "other");
         }}
       >
         <Pencil className="h-8 w-8" />
@@ -138,7 +135,7 @@ export default function ExerciseLogPage() {
             }`}
             onClick={() => {
               setIntensity(level as IntensityLevel);
-              form.setValue("intensity", level);
+              form.setValue("intensity", level as IntensityLevel);
             }}
           >
             <div className="font-medium capitalize">{level}</div>
@@ -203,18 +200,18 @@ export default function ExerciseLogPage() {
   );
 
   return (
-    <div className="max-w-4xl mx-auto p-6 space-y-6">
+    <div className="max-w-4xl mx-auto p-6 space-y-6 pb-32">
       <h1 className="text-2xl font-bold">Log Exercise</h1>
 
       {!selectedType && renderExerciseTypeSelection()}
 
       {selectedType && selectedType !== "custom" && (
-        <div className="space-y-6">
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
           {renderIntensitySelection()}
           {renderDurationSelection()}
           <Button 
-            onClick={form.handleSubmit(onSubmit)} 
-            className="w-full"
+            type="submit" 
+            className="w-full sticky bottom-20 mt-6"
             disabled={mutation.isPending}
           >
             {mutation.isPending ? (
@@ -226,7 +223,7 @@ export default function ExerciseLogPage() {
               "Add Exercise"
             )}
           </Button>
-        </div>
+        </form>
       )}
 
       {selectedType === "custom" && renderCustomExercise()}
