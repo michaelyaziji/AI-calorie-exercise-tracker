@@ -26,21 +26,16 @@ import { Tv, Loader2 } from "lucide-react";
 
 type OnboardingStep = "credentials" | "gender" | "measurements" | "activity" | "social";
 
-const formSchema = z.object({
-  username: z.string().min(1, "Username is required"),
-  password: z.string().min(1, "Password is required"),
-  confirmPassword: z.string().min(1, "Please confirm your password"),
-  gender: z.enum(["male", "female", "other"]),
-  height: z.number().min(50).max(300),
-  weight: z.number().min(20).max(500),
-  targetWeight: z.number().min(20).max(500),
-  activityLevel: z.enum(["sedentary", "light", "moderate", "active", "very_active"]),
-  workoutsPerWeek: z.number().min(0).max(14),
-  socialSource: z.string(),
-}).refine((data) => data.password === data.confirmPassword, {
-  message: "Passwords don't match",
-  path: ["confirmPassword"],
-});
+const SOCIAL_OPTIONS = [
+  { value: "instagram", icon: SiInstagram, label: "Instagram" },
+  { value: "facebook", icon: SiFacebook, label: "Facebook" },
+  { value: "tiktok", icon: SiTiktok, label: "TikTok" },
+  { value: "youtube", icon: SiYoutube, label: "Youtube" },
+  { value: "google", icon: SiGoogle, label: "Google" },
+  { value: "tv", icon: Tv, label: "TV" },
+] as const;
+
+const formSchema = insertUserSchema;
 
 type FormData = z.infer<typeof formSchema>;
 
@@ -79,7 +74,7 @@ export default function OnboardingPage() {
         password: hashedPassword,
       };
 
-      const response = await apiRequest("POST", "/api/users", userData);
+      const response = await apiRequest("POST", "/api/register", userData);
       if (!response.ok) {
         const error = await response.json();
         throw new Error(error.message || "Failed to create user");
@@ -358,14 +353,7 @@ export default function OnboardingPage() {
                           defaultValue={field.value}
                           className="flex flex-col gap-4"
                         >
-                          {[
-                            { value: "instagram", icon: SiInstagram, label: "Instagram" },
-                            { value: "facebook", icon: SiFacebook, label: "Facebook" },
-                            { value: "tiktok", icon: SiTiktok, label: "TikTok" },
-                            { value: "youtube", icon: SiYoutube, label: "Youtube" },
-                            { value: "google", icon: SiGoogle, label: "Google" },
-                            { value: "tv", icon: Tv, label: "TV" },
-                          ].map(({ value, icon: Icon, label }) => (
+                          {SOCIAL_OPTIONS.map(({ value, icon: Icon, label }) => (
                             <FormItem
                               key={value}
                               className="flex items-center space-x-3 space-y-0"

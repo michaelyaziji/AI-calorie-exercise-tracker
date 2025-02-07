@@ -82,6 +82,7 @@ export const insertUserSchema = createInsertSchema(users)
     weight: z.number().min(20).max(500),
     targetWeight: z.number().min(20).max(500),
     workoutsPerWeek: z.number().min(0).max(14),
+    socialSource: z.enum(["instagram", "facebook", "tiktok", "youtube", "google", "tv"]),
   });
 
 export const insertMealSchema = createInsertSchema(meals)
