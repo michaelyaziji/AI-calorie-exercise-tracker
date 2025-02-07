@@ -41,15 +41,15 @@ export default function OnboardingPage() {
     password: nanoid(16),  // 16 character random string for better security
   });
 
-  const form = useForm({
+  const form = useForm<InsertUser>({
     resolver: zodResolver(insertUserSchema),
     defaultValues: {
       ...generateSecureCredentials(),
-      gender: "",
+      gender: "male",  // Set a default value that matches the enum
       height: 170,
       weight: 70,
       targetWeight: 65,
-      activityLevel: "",
+      activityLevel: "moderate",  // Set a default value that matches the enum
       workoutsPerWeek: 0,
       socialSource: "",
     },
@@ -126,15 +126,19 @@ export default function OnboardingPage() {
                           defaultValue={field.value}
                           className="flex flex-col gap-4"
                         >
-                          {["Male", "Female", "Other"].map((option) => (
+                          {[
+                            { label: "Male", value: "male" },
+                            { label: "Female", value: "female" },
+                            { label: "Other", value: "other" }
+                          ].map(({ label, value }) => (
                             <FormItem
-                              key={option}
+                              key={value}
                               className="flex items-center space-x-3 space-y-0"
                             >
                               <FormControl>
-                                <RadioGroupItem value={option.toLowerCase()} />
+                                <RadioGroupItem value={value} />
                               </FormControl>
-                              <FormLabel className="font-normal">{option}</FormLabel>
+                              <FormLabel className="font-normal">{label}</FormLabel>
                             </FormItem>
                           ))}
                         </RadioGroup>
@@ -217,39 +221,32 @@ export default function OnboardingPage() {
                 <h1 className="text-2xl font-bold mb-6">How active are you?</h1>
                 <FormField
                   control={form.control}
-                  name="workoutsPerWeek"
+                  name="activityLevel"
                   render={({ field }) => (
                     <FormItem>
                       <FormControl>
                         <RadioGroup
-                          onValueChange={(val) => field.onChange(parseInt(val))}
-                          defaultValue={field.value.toString()}
+                          onValueChange={field.onChange}
+                          defaultValue={field.value}
                           className="flex flex-col gap-4"
                         >
-                          <FormItem className="flex items-center space-x-3 space-y-0">
-                            <FormControl>
-                              <RadioGroupItem value="0" />
-                            </FormControl>
-                            <FormLabel className="font-normal">
-                              0-2 (Workouts now and then)
-                            </FormLabel>
-                          </FormItem>
-                          <FormItem className="flex items-center space-x-3 space-y-0">
-                            <FormControl>
-                              <RadioGroupItem value="3" />
-                            </FormControl>
-                            <FormLabel className="font-normal">
-                              3-5 (A few workouts per week)
-                            </FormLabel>
-                          </FormItem>
-                          <FormItem className="flex items-center space-x-3 space-y-0">
-                            <FormControl>
-                              <RadioGroupItem value="6" />
-                            </FormControl>
-                            <FormLabel className="font-normal">
-                              6+ (Dedicated athlete)
-                            </FormLabel>
-                          </FormItem>
+                          {[
+                            { value: "sedentary", label: "Sedentary (Little to no exercise)" },
+                            { value: "light", label: "Light (Light exercise/sports 1-3 days/week)" },
+                            { value: "moderate", label: "Moderate (Moderate exercise/sports 3-5 days/week)" },
+                            { value: "active", label: "Active (Hard exercise/sports 6-7 days/week)" },
+                            { value: "very_active", label: "Very Active (Very hard exercise/sports & physical job)" }
+                          ].map(({ value, label }) => (
+                            <FormItem
+                              key={value}
+                              className="flex items-center space-x-3 space-y-0"
+                            >
+                              <FormControl>
+                                <RadioGroupItem value={value} />
+                              </FormControl>
+                              <FormLabel className="font-normal">{label}</FormLabel>
+                            </FormItem>
+                          ))}
                         </RadioGroup>
                       </FormControl>
                       <FormMessage />
