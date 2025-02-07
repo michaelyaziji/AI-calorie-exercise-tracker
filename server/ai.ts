@@ -12,7 +12,7 @@ export interface NutritionInfo {
 export async function analyzeFoodImage(base64Image: string): Promise<NutritionInfo> {
   try {
     const response = await openai.chat.completions.create({
-      model: "gpt-4-vision",
+      model: "gpt-4o-mini-2024-07-18",
       messages: [
         {
           role: "system",
