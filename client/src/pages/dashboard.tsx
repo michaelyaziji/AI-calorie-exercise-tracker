@@ -26,17 +26,17 @@ export default function DashboardPage() {
     retryDelay: 1000,
   });
 
-  const { data: meals, isLoading: isLoadingMeals } = useQuery<Meal[]>({
+  const { data: meals = [], isLoading: isLoadingMeals } = useQuery<Meal[]>({
     queryKey: ["/api/meals"],
     enabled: !!user,
   });
 
-  const { data: exercises, isLoading: isLoadingExercises } = useQuery<Exercise[]>({
+  const { data: exercises = [], isLoading: isLoadingExercises } = useQuery<Exercise[]>({
     queryKey: ["/api/exercises"],
     enabled: !!user,
   });
 
-  const { data: progress, isLoading: isLoadingProgress } = useQuery<ProgressType[]>({
+  const { data: progress = [], isLoading: isLoadingProgress } = useQuery<ProgressType[]>({
     queryKey: ["/api/progress"],
     enabled: !!user,
   });
@@ -94,7 +94,9 @@ export default function DashboardPage() {
     return isSameDay(exerciseDate, selectedDate);
   });
 
-  const weightProgress = ((user.weight - user.targetWeight) / (user.weight - user.targetWeight)) * 100;
+  const weightProgress = user.targetWeight 
+    ? Math.max(0, Math.min(100, ((user.weight - user.targetWeight) / (user.weight - user.targetWeight)) * 100))
+    : 0;
 
   return (
     <div className="space-y-6 pb-16">
@@ -133,11 +135,13 @@ export default function DashboardPage() {
             <CardContent className="space-y-4">
               {selectedMeals.map((meal) => (
                 <div key={meal.id} className="flex gap-4 border-b pb-4 last:border-0 last:pb-0">
-                  <img
-                    src={meal.imageUrl}
-                    alt="Meal"
-                    className="w-24 h-24 rounded-lg object-cover"
-                  />
+                  {meal.imageUrl && (
+                    <img
+                      src={meal.imageUrl}
+                      alt="Meal"
+                      className="w-24 h-24 rounded-lg object-cover"
+                    />
+                  )}
                   <div className="flex-1">
                     <div className="text-sm text-muted-foreground">
                       {format(new Date(meal.timestamp), "h:mm a")}

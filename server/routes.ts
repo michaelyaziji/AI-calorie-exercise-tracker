@@ -9,6 +9,13 @@ import session from "express-session";
 import bcrypt from "bcryptjs";
 import MemoryStore from "memorystore";
 
+// Add session type declaration
+declare module "express-session" {
+  interface SessionData {
+    userId: number;
+  }
+}
+
 const MemoryStoreSession = MemoryStore(session);
 
 // Session middleware with secure configuration
@@ -40,12 +47,12 @@ function requireAuth(req: Request, res: Response, next: NextFunction) {
 function errorHandler(err: Error, req: Request, res: Response, next: NextFunction) {
   console.error(err.stack);
   if (err instanceof z.ZodError) {
-    res.status(400).json({ 
-      error: "Validation error", 
-      details: err.errors 
+    res.status(400).json({
+      error: "Validation error",
+      details: err.errors
     });
   } else {
-    res.status(500).json({ 
+    res.status(500).json({
       error: "Internal server error",
       message: process.env.NODE_ENV === 'development' ? err.message : 'An unexpected error occurred'
     });
@@ -77,6 +84,13 @@ export function registerRoutes(app: Express): Server {
       }
 
       req.session.userId = user.id;
+      await new Promise<void>((resolve, reject) => {
+        req.session.save((err) => {
+          if (err) reject(err);
+          resolve();
+        });
+      });
+
       const { password: _, ...userWithoutPassword } = user;
       res.json(userWithoutPassword);
     } catch (error) {
