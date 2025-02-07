@@ -33,35 +33,6 @@ type FormData = z.infer<typeof insertUserSchema> & {
   confirmPassword: string;
 };
 
-const stepValidation = {
-  credentials: z.object({
-    username: z.string().min(3, "Username must be at least 3 characters"),
-    password: z.string().min(8, "Password must be at least 8 characters"),
-    confirmPassword: z.string(),
-  }).refine((data) => data.password === data.confirmPassword, {
-    message: "Passwords don't match",
-    path: ["confirmPassword"],
-  }),
-  gender: z.object({
-    gender: z.enum(["male", "female", "other"], {
-      required_error: "Please select your gender",
-    }),
-  }),
-  measurements: z.object({
-    height: z.number().min(50).max(300),
-    weight: z.number().min(20).max(500),
-    targetWeight: z.number().min(20).max(500),
-  }),
-  activity: z.object({
-    workoutsPerWeek: z.number().min(0).max(14),
-  }),
-  social: z.object({
-    socialSource: z.string({
-      required_error: "Please select where you heard about us",
-    }),
-  }),
-};
-
 export default function OnboardingPage() {
   const [, navigate] = useLocation();
   const { toast } = useToast();
@@ -116,44 +87,19 @@ export default function OnboardingPage() {
     },
   });
 
-  const validateCurrentStep = () => {
-    const currentStepSchema = stepValidation[step];
-    const currentStepData = form.getValues();
-    console.log('Validating step:', step, 'with data:', currentStepData);
-
-    try {
-      currentStepSchema.parse(currentStepData);
-      return true;
-    } catch (error) {
-      if (error instanceof z.ZodError) {
-        error.errors.forEach((err) => {
-          toast({
-            title: "Validation Error",
-            description: err.message,
-            variant: "destructive",
-          });
-        });
-      }
-      console.error('Validation error:', error);
-      return false;
-    }
-  };
-
   const onSubmit = (data: FormData) => {
     console.log('Form submitted with data:', data);
     console.log('Current step:', step);
 
     if (step !== "social") {
-      if (validateCurrentStep()) {
-        const nextSteps: Record<OnboardingStep, OnboardingStep> = {
-          credentials: "gender",
-          gender: "measurements",
-          measurements: "activity",
-          activity: "social",
-          social: "social",
-        };
-        setStep(nextSteps[step]);
-      }
+      const nextSteps: Record<OnboardingStep, OnboardingStep> = {
+        credentials: "gender",
+        gender: "measurements",
+        measurements: "activity",
+        activity: "social",
+        social: "social",
+      };
+      setStep(nextSteps[step]);
     } else {
       createUser.mutate(data);
     }
