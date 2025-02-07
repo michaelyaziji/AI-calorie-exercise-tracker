@@ -73,23 +73,32 @@ export default function DashboardPage() {
             <CardTitle>Latest Meal</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-3 gap-4 text-center">
-              <div>
-                <div className="text-2xl font-bold">{meals[meals.length - 1].protein}g</div>
-                <div className="text-sm text-muted-foreground">Protein</div>
+            <div className="flex gap-6">
+              <img
+                src={meals[meals.length - 1].imageUrl}
+                alt="Latest meal"
+                className="w-32 h-32 rounded-lg object-cover"
+              />
+              <div className="flex-1">
+                <div className="grid grid-cols-3 gap-4 text-center">
+                  <div>
+                    <div className="text-2xl font-bold">{meals[meals.length - 1].protein}g</div>
+                    <div className="text-sm text-muted-foreground">Protein</div>
+                  </div>
+                  <div>
+                    <div className="text-2xl font-bold">{meals[meals.length - 1].carbs}g</div>
+                    <div className="text-sm text-muted-foreground">Carbs</div>
+                  </div>
+                  <div>
+                    <div className="text-2xl font-bold">{meals[meals.length - 1].fat}g</div>
+                    <div className="text-sm text-muted-foreground">Fat</div>
+                  </div>
+                </div>
+                <div className="mt-4 text-center">
+                  <div className="text-3xl font-bold">{meals[meals.length - 1].calories}</div>
+                  <div className="text-sm text-muted-foreground">Calories</div>
+                </div>
               </div>
-              <div>
-                <div className="text-2xl font-bold">{meals[meals.length - 1].carbs}g</div>
-                <div className="text-sm text-muted-foreground">Carbs</div>
-              </div>
-              <div>
-                <div className="text-2xl font-bold">{meals[meals.length - 1].fat}g</div>
-                <div className="text-sm text-muted-foreground">Fat</div>
-              </div>
-            </div>
-            <div className="mt-4 text-center">
-              <div className="text-3xl font-bold">{meals[meals.length - 1].calories}</div>
-              <div className="text-sm text-muted-foreground">Calories</div>
             </div>
           </CardContent>
         </Card>
