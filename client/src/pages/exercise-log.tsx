@@ -3,16 +3,19 @@ import { useLocation } from "wouter";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Timer, Dumbbell, Pencil } from "lucide-react";
+import { Timer, Dumbbell, Pencil, Loader2 } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { insertExerciseSchema } from "@shared/schema";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import type { Exercise } from "@shared/schema";
+import { z } from "zod";
 
 type ExerciseType = "run" | "weightlifting" | "custom";
 type IntensityLevel = "high" | "medium" | "low";
+type ExerciseFormData = z.infer<typeof insertExerciseSchema>;
 
 export default function ExerciseLogPage() {
   const [selectedType, setSelectedType] = useState<ExerciseType | null>(null);
@@ -22,7 +25,7 @@ export default function ExerciseLogPage() {
   const queryClient = useQueryClient();
   const [, navigate] = useLocation();
 
-  const form = useForm({
+  const form = useForm<ExerciseFormData>({
     resolver: zodResolver(insertExerciseSchema),
     defaultValues: {
       userId: 1, // Hardcoded for demo
@@ -30,36 +33,48 @@ export default function ExerciseLogPage() {
       intensity: "medium",
       duration: 15,
       description: "",
+      timestamp: new Date().toISOString(),
     },
   });
 
   const mutation = useMutation({
-    mutationFn: async (data: any) => {
-      return await apiRequest("POST", '/api/exercises', data);
+    mutationFn: async (data: ExerciseFormData) => {
+      const response = await apiRequest("POST", '/api/exercises', data);
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || "Failed to log exercise");
+      }
+      return response.json() as Promise<Exercise>;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/exercises"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/users/1/exercises"] });
       toast({
         title: "Exercise logged successfully!",
         description: "Your workout has been recorded.",
       });
       navigate("/dashboard");
     },
-    onError: (error: any) => {
+    onError: (error: Error) => {
       toast({
         title: "Failed to log exercise",
-        description: error.message || "Something went wrong",
+        description: error.message,
         variant: "destructive",
       });
     },
   });
 
-  const onSubmit = (data: any) => {
+  const onSubmit = (data: ExerciseFormData) => {
+    const exerciseData: ExerciseFormData = {
+      ...data,
+      userId: 1, // Hardcoded for demo
+      timestamp: new Date().toISOString(),
+    };
+
     if (selectedType === "custom") {
-      mutation.mutate(data);
-    } else {
+      mutation.mutate(exerciseData);
+    } else if (selectedType) {
       mutation.mutate({
-        userId: 1, // Hardcoded for demo
+        ...exerciseData,
         type: selectedType,
         intensity,
         duration,
@@ -73,7 +88,10 @@ export default function ExerciseLogPage() {
       <Button
         variant="outline"
         className="h-32 flex flex-col gap-2"
-        onClick={() => setSelectedType("run")}
+        onClick={() => {
+          setSelectedType("run");
+          form.setValue("type", "run");
+        }}
       >
         <Timer className="h-8 w-8" />
         <span>Run</span>
@@ -83,7 +101,10 @@ export default function ExerciseLogPage() {
       <Button
         variant="outline"
         className="h-32 flex flex-col gap-2"
-        onClick={() => setSelectedType("weightlifting")}
+        onClick={() => {
+          setSelectedType("weightlifting");
+          form.setValue("type", "weightlifting");
+        }}
       >
         <Dumbbell className="h-8 w-8" />
         <span>Weight lifting</span>
@@ -93,7 +114,10 @@ export default function ExerciseLogPage() {
       <Button
         variant="outline"
         className="h-32 flex flex-col gap-2"
-        onClick={() => setSelectedType("custom")}
+        onClick={() => {
+          setSelectedType("custom");
+          form.setValue("type", "custom");
+        }}
       >
         <Pencil className="h-8 w-8" />
         <span>Describe</span>
@@ -160,8 +184,19 @@ export default function ExerciseLogPage() {
         <div className="text-sm text-muted-foreground">
           Example: Pilates for 50 mins, core and flexibility improved
         </div>
-        <Button type="submit" className="w-full">
-          Add Exercise
+        <Button 
+          type="submit" 
+          className="w-full"
+          disabled={mutation.isPending}
+        >
+          {mutation.isPending ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Saving...
+            </>
+          ) : (
+            "Add Exercise"
+          )}
         </Button>
       </form>
     </Card>
@@ -182,7 +217,14 @@ export default function ExerciseLogPage() {
             className="w-full"
             disabled={mutation.isPending}
           >
-            {mutation.isPending ? "Saving..." : "Add Exercise"}
+            {mutation.isPending ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Saving...
+              </>
+            ) : (
+              "Add Exercise"
+            )}
           </Button>
         </div>
       )}

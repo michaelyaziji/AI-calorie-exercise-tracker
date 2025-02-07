@@ -27,11 +27,16 @@ import { Tv, Loader2 } from "lucide-react";
 
 type OnboardingStep = "credentials" | "gender" | "measurements" | "activity" | "social";
 
-const STEPS = ["credentials", "gender", "measurements", "activity", "social"] as const;
+const formSchema = insertUserSchema.extend({
+  confirmPassword: z.string()
+}).refine((data) => data.password === data.confirmPassword, {
+  message: "Passwords don't match",
+  path: ["confirmPassword"],
+});
 
-type FormData = z.infer<typeof insertUserSchema> & {
-  confirmPassword: string;
-};
+type FormData = z.infer<typeof formSchema>;
+
+const STEPS = ["credentials", "gender", "measurements", "activity", "social"] as const;
 
 export default function OnboardingPage() {
   const [, navigate] = useLocation();
@@ -42,9 +47,7 @@ export default function OnboardingPage() {
   const progress = ((currentStepIndex + 1) / STEPS.length) * 100;
 
   const form = useForm<FormData>({
-    resolver: zodResolver(insertUserSchema.extend({
-      confirmPassword: z.string(),
-    })),
+    resolver: zodResolver(formSchema),
     defaultValues: {
       username: "",
       password: "",
@@ -68,8 +71,11 @@ export default function OnboardingPage() {
         password: hashedPassword,
       };
 
-      const res = await apiRequest("POST", "/api/users", userData);
-      return res.json();
+      const response = await apiRequest("POST", "/api/users", userData);
+      if (!response.ok) {
+        throw new Error("Failed to create user");
+      }
+      return response.json();
     },
     onSuccess: () => {
       toast({
@@ -87,10 +93,7 @@ export default function OnboardingPage() {
     },
   });
 
-  const onSubmit = (data: FormData) => {
-    console.log('Form submitted with data:', data);
-    console.log('Current step:', step);
-
+  const onSubmit = async (data: FormData) => {
     if (step !== "social") {
       const nextSteps: Record<OnboardingStep, OnboardingStep> = {
         credentials: "gender",
@@ -100,13 +103,11 @@ export default function OnboardingPage() {
         social: "social",
       };
       setStep(nextSteps[step]);
-    } else {
-      createUser.mutate(data);
+      return;
     }
-  };
 
-  const isLoading = createUser.isPending;
-  console.log('Form errors:', form.formState.errors);
+    await createUser.mutateAsync(data);
+  };
 
   return (
     <div className="container max-w-md mx-auto px-4 pt-8">
@@ -231,7 +232,6 @@ export default function OnboardingPage() {
                             type="number"
                             {...field}
                             onChange={(e) => field.onChange(Number(e.target.value))}
-                            value={field.value}
                           />
                         </FormControl>
                         <FormMessage />
@@ -249,7 +249,6 @@ export default function OnboardingPage() {
                             type="number"
                             {...field}
                             onChange={(e) => field.onChange(Number(e.target.value))}
-                            value={field.value}
                           />
                         </FormControl>
                         <FormMessage />
@@ -267,7 +266,6 @@ export default function OnboardingPage() {
                             type="number"
                             {...field}
                             onChange={(e) => field.onChange(Number(e.target.value))}
-                            value={field.value}
                           />
                         </FormControl>
                         <FormMessage />
@@ -377,9 +375,9 @@ export default function OnboardingPage() {
           <Button
             type="submit"
             className="w-full"
-            disabled={isLoading}
+            disabled={createUser.isPending}
           >
-            {isLoading ? (
+            {createUser.isPending ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 Please wait
