@@ -18,15 +18,21 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Card, CardContent } from "@/components/ui/card";
+import { Progress } from "@/components/ui/progress";
 import { SiInstagram, SiFacebook, SiTiktok, SiYoutube, SiGoogle } from "react-icons/si";
 import { Tv } from "lucide-react";
 
 type OnboardingStep = "gender" | "measurements" | "activity" | "social";
 
+const STEPS = ["gender", "measurements", "activity", "social"] as const;
+
 export default function OnboardingPage() {
   const [, navigate] = useLocation();
   const { toast } = useToast();
   const [step, setStep] = useState<OnboardingStep>("gender");
+
+  const currentStepIndex = STEPS.indexOf(step);
+  const progress = ((currentStepIndex + 1) / STEPS.length) * 100;
 
   const form = useForm({
     resolver: zodResolver(insertUserSchema),
@@ -80,6 +86,13 @@ export default function OnboardingPage() {
 
   return (
     <div className="container max-w-md mx-auto px-4 pt-8">
+      <div className="mb-8">
+        <Progress value={progress} className="h-2" />
+        <p className="text-sm text-muted-foreground mt-2">
+          Step {currentStepIndex + 1} of {STEPS.length}
+        </p>
+      </div>
+
       <Form {...form}>
         <form onSubmit={onSubmit} className="space-y-8">
           {step === "gender" && (
@@ -185,7 +198,7 @@ export default function OnboardingPage() {
           {step === "activity" && (
             <Card>
               <CardContent className="pt-6">
-                <h1 className="text-2xl font-bold mb-6">How many workouts do you do per week?</h1>
+                <h1 className="text-2xl font-bold mb-6">How active are you?</h1>
                 <FormField
                   control={form.control}
                   name="workoutsPerWeek"
