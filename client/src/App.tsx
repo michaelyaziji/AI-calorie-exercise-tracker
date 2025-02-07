@@ -8,6 +8,7 @@ import DashboardPage from "@/pages/dashboard";
 import MealLogPage from "@/pages/meal-log";
 import ExerciseLogPage from "@/pages/exercise-log";
 import NavBar from "@/components/nav-bar";
+import { FloatingActionButton } from "@/components/floating-action-button";
 
 function Router() {
   return (
@@ -29,6 +30,7 @@ function App() {
         <main className="container mx-auto px-4 py-4">
           <Router />
         </main>
+        <FloatingActionButton />
       </div>
       <Toaster />
     </QueryClientProvider>
