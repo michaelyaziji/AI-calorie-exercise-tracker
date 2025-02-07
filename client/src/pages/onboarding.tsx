@@ -15,7 +15,6 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-  FormDescription,
 } from "@/components/ui/form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -27,18 +26,17 @@ import { Tv, Loader2 } from "lucide-react";
 
 type OnboardingStep = "credentials" | "gender" | "measurements" | "activity" | "social";
 
-// Remove validation from insertUserSchema temporarily for testing
 const formSchema = z.object({
   username: z.string().min(1, "Username is required"),
   password: z.string().min(1, "Password is required"),
   confirmPassword: z.string().min(1, "Please confirm your password"),
-  gender: z.enum(["male", "female", "other"]).optional(),
-  height: z.number().optional(),
-  weight: z.number().optional(),
-  targetWeight: z.number().optional(),
-  activityLevel: z.enum(["low", "moderate", "high"]).optional(),
-  workoutsPerWeek: z.number().optional(),
-  socialSource: z.string().optional(),
+  gender: z.enum(["male", "female", "other"]),
+  height: z.number().min(50).max(300),
+  weight: z.number().min(20).max(500),
+  targetWeight: z.number().min(20).max(500),
+  activityLevel: z.enum(["sedentary", "light", "moderate", "active", "very_active"]),
+  workoutsPerWeek: z.number().min(0).max(14),
+  socialSource: z.string(),
 }).refine((data) => data.password === data.confirmPassword, {
   message: "Passwords don't match",
   path: ["confirmPassword"],
@@ -62,7 +60,7 @@ export default function OnboardingPage() {
       username: "",
       password: "",
       confirmPassword: "",
-      gender: undefined,
+      gender: "male",
       height: 170,
       weight: 70,
       targetWeight: 65,
@@ -83,7 +81,8 @@ export default function OnboardingPage() {
 
       const response = await apiRequest("POST", "/api/users", userData);
       if (!response.ok) {
-        throw new Error("Failed to create user");
+        const error = await response.json();
+        throw new Error(error.message || "Failed to create user");
       }
       return response.json();
     },
@@ -96,25 +95,23 @@ export default function OnboardingPage() {
     },
     onError: (error: Error) => {
       toast({
-        title: "Error",
+        title: "Error creating account",
         description: error.message,
         variant: "destructive",
       });
+      // Reset to credentials step if there's a username conflict
+      if (error.message.includes("already exists")) {
+        setStep("credentials");
+      }
     },
   });
 
   const onSubmit = async (data: FormData) => {
-    console.log("Form submitted:", data);
-    console.log("Current step:", step);
-    console.log("Form errors:", form.formState.errors);
-
     if (step === "credentials") {
       if (!data.username || !data.password || !data.confirmPassword) {
-        console.log("Missing required fields");
         return;
       }
       if (data.password !== data.confirmPassword) {
-        console.log("Passwords don't match");
         return;
       }
     }
@@ -127,12 +124,10 @@ export default function OnboardingPage() {
         activity: "social",
         social: "social",
       };
-      console.log("Moving to next step:", nextSteps[step]);
       setStep(nextSteps[step]);
     } else {
       try {
         await createUser.mutateAsync(data);
-        navigate("/dashboard");
       } catch (error) {
         console.error("Error creating user:", error);
       }
@@ -307,40 +302,39 @@ export default function OnboardingPage() {
                 <h1 className="text-2xl font-bold mb-6">How active are you?</h1>
                 <FormField
                   control={form.control}
-                  name="workoutsPerWeek"
+                  name="activityLevel"
                   render={({ field }) => (
                     <FormItem>
                       <FormControl>
                         <RadioGroup
-                          onValueChange={(val) => field.onChange(parseInt(val, 10))}
-                          defaultValue={field.value.toString()}
+                          onValueChange={field.onChange}
+                          defaultValue={field.value}
                           className="flex flex-col gap-4"
                         >
-                          <FormItem className="flex items-center space-x-3 space-y-0">
-                            <FormControl>
-                              <RadioGroupItem value="0" />
-                            </FormControl>
-                            <FormLabel className="font-normal">
-                              0-2 (Workouts now and then)
-                            </FormLabel>
-                          </FormItem>
-                          <FormItem className="flex items-center space-x-3 space-y-0">
-                            <FormControl>
-                              <RadioGroupItem value="3" />
-                            </FormControl>
-                            <FormLabel className="font-normal">
-                              3-5 (A few workouts per week)
-                            </FormLabel>
-                          </FormItem>
-                          <FormItem className="flex items-center space-x-3 space-y-0">
-                            <FormControl>
-                              <RadioGroupItem value="6" />
-                            </FormControl>
-                            <FormLabel className="font-normal">
-                              6+ (Dedicated athlete)
-                            </FormLabel>
-                          </FormItem>
+                          {["Sedentary", "Light", "Moderate", "Active", "Very Active"].map((option) => (
+                            <FormItem
+                              key={option}
+                              className="flex items-center space-x-3 space-y-0"
+                            >
+                              <FormControl>
+                                <RadioGroupItem value={option.toLowerCase()} />
+                              </FormControl>
+                              <FormLabel className="font-normal">{option}</FormLabel>
+                            </FormItem>
+                          ))}
                         </RadioGroup>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="workoutsPerWeek"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormControl>
+                        <Input type="number" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>

@@ -1,36 +1,59 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useLocation } from "wouter";
 import { Progress } from "@/components/ui/progress";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import ProgressChart from "@/components/progress-chart";
 import DailyRecommendations from "@/components/daily-recommendations";
 import DateSelector from "@/components/date-selector";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Loader2 } from "lucide-react";
 import type { User, Meal, Progress as ProgressType, Exercise } from "@shared/schema";
 import { format, isSameDay } from "date-fns";
 
 export default function DashboardPage() {
+  const [, navigate] = useLocation();
   const [selectedDate, setSelectedDate] = useState(() => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     return today;
   });
 
-  const { data: user, isLoading: isLoadingUser } = useQuery<User>({
+  const { data: user, isLoading: isLoadingUser, error: userError } = useQuery<User>({
     queryKey: ["/api/users/me"],
+    retry: false,
   });
 
   const { data: meals, isLoading: isLoadingMeals } = useQuery<Meal[]>({
     queryKey: ["/api/meals"],
+    enabled: !!user, // Only fetch if user is authenticated
   });
 
   const { data: exercises, isLoading: isLoadingExercises } = useQuery<Exercise[]>({
     queryKey: ["/api/exercises"],
+    enabled: !!user,
   });
 
   const { data: progress, isLoading: isLoadingProgress } = useQuery<ProgressType[]>({
     queryKey: ["/api/progress"],
+    enabled: !!user,
   });
+
+  // Handle unauthorized error
+  if (userError?.message === "Unauthorized" || userError?.message === "Failed to fetch") {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen p-4">
+        <h1 className="text-2xl font-bold mb-4">Session Expired</h1>
+        <p className="text-muted-foreground mb-6 text-center">
+          Your session has expired or you're not logged in. Please sign in again to continue.
+        </p>
+        <Button onClick={() => navigate("/auth")}>
+          Sign In
+        </Button>
+      </div>
+    );
+  }
 
   if (isLoadingUser || isLoadingMeals || isLoadingProgress || isLoadingExercises) {
     return (
@@ -43,7 +66,12 @@ export default function DashboardPage() {
   }
 
   if (!user || !meals || !progress || !exercises) {
-    return <div>Error loading data</div>;
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen p-4">
+        <Loader2 className="h-8 w-8 animate-spin mb-4" />
+        <p className="text-muted-foreground">Loading your data...</p>
+      </div>
+    );
   }
 
   // Filter data for selected date
