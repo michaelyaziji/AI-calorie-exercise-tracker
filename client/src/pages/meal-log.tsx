@@ -8,9 +8,11 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
 import type { Meal } from "@shared/schema";
+import type { ProductInfo } from "@/lib/barcode-service";
 
 export default function MealLogPage() {
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
+  const [productInfo, setProductInfo] = useState<ProductInfo | null>(null);
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const [, navigate] = useLocation();
@@ -20,6 +22,13 @@ export default function MealLogPage() {
       const res = await apiRequest("POST", "/api/meals", {
         imageBase64,
         userId: 1, // Hardcoded for demo
+        ...(productInfo && {
+          calories: productInfo.calories,
+          protein: productInfo.protein,
+          carbs: productInfo.carbs,
+          fat: productInfo.fat,
+          name: productInfo.name,
+        }),
       });
       return res.json() as Promise<Meal>;
     },
@@ -40,8 +49,11 @@ export default function MealLogPage() {
     },
   });
 
-  const handleCapture = (imageBase64: string) => {
+  const handleCapture = (imageBase64: string, productInfo?: ProductInfo) => {
     setCapturedImage(imageBase64);
+    if (productInfo) {
+      setProductInfo(productInfo);
+    }
   };
 
   const handleAnalyze = () => {
@@ -64,8 +76,34 @@ export default function MealLogPage() {
               alt="Captured meal"
               className="w-full rounded-lg"
             />
+            {productInfo && (
+              <div className="mt-4 space-y-2">
+                <h3 className="font-medium">{productInfo.name}</h3>
+                <div className="grid grid-cols-4 gap-4 text-center">
+                  <div>
+                    <div className="font-medium">{productInfo.calories}</div>
+                    <div className="text-xs text-muted-foreground">calories</div>
+                  </div>
+                  <div>
+                    <div className="font-medium">{productInfo.protein}g</div>
+                    <div className="text-xs text-muted-foreground">protein</div>
+                  </div>
+                  <div>
+                    <div className="font-medium">{productInfo.carbs}g</div>
+                    <div className="text-xs text-muted-foreground">carbs</div>
+                  </div>
+                  <div>
+                    <div className="font-medium">{productInfo.fat}g</div>
+                    <div className="text-xs text-muted-foreground">fat</div>
+                  </div>
+                </div>
+              </div>
+            )}
             <div className="flex justify-between mt-4">
-              <Button variant="outline" onClick={() => setCapturedImage(null)}>
+              <Button variant="outline" onClick={() => {
+                setCapturedImage(null);
+                setProductInfo(null);
+              }}>
                 Retake
               </Button>
               <Button
@@ -75,10 +113,10 @@ export default function MealLogPage() {
                 {analyzeMeal.isPending ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Analyzing...
+                    {productInfo ? 'Saving...' : 'Analyzing...'}
                   </>
                 ) : (
-                  "Analyze Meal"
+                  productInfo ? 'Save Meal' : 'Analyze Meal'
                 )}
               </Button>
             </div>

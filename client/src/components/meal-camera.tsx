@@ -2,11 +2,14 @@ import { useRef, useState } from "react";
 import { Camera, Barcode, Tag, Image } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { format } from "date-fns";
+import { lookupBarcode } from "@/lib/barcode-service";
+import type { ProductInfo } from "@/lib/barcode-service";
 
 type ScanMode = "food" | "barcode" | "label" | "gallery";
 
 interface MealCameraProps {
-  onCapture: (imageBase64: string) => void;
+  onCapture: (imageBase64: string, productInfo?: ProductInfo) => void;
 }
 
 export default function MealCamera({ onCapture }: MealCameraProps) {
@@ -14,6 +17,8 @@ export default function MealCamera({ onCapture }: MealCameraProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isStreaming, setIsStreaming] = useState(false);
   const [mode, setMode] = useState<ScanMode>("food");
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [timestamp] = useState(() => new Date());
 
   const startCamera = async () => {
     try {
@@ -29,16 +34,32 @@ export default function MealCamera({ onCapture }: MealCameraProps) {
     }
   };
 
-  const captureImage = () => {
+  const captureImage = async () => {
     if (videoRef.current && canvasRef.current) {
       const context = canvasRef.current.getContext("2d");
       if (context) {
+        setIsProcessing(true);
         canvasRef.current.width = videoRef.current.videoWidth;
         canvasRef.current.height = videoRef.current.videoHeight;
         context.drawImage(videoRef.current, 0, 0);
         const imageBase64 = canvasRef.current.toDataURL("image/jpeg").split(",")[1];
-        onCapture(imageBase64);
+
+        if (mode === "barcode") {
+          try {
+            // For demo purposes, using a sample barcode
+            const productInfo = await lookupBarcode("3017620425035");
+            if (productInfo) {
+              onCapture(imageBase64, productInfo);
+            }
+          } catch (error) {
+            console.error("Error processing barcode:", error);
+          }
+        } else {
+          onCapture(imageBase64);
+        }
+
         stopCamera();
+        setIsProcessing(false);
       }
     }
   };
@@ -67,7 +88,12 @@ export default function MealCamera({ onCapture }: MealCameraProps) {
 
   return (
     <Card className="p-4">
-      <div className="text-lg font-semibold mb-4 text-center">{getModeTitle()}</div>
+      <div className="text-lg font-semibold mb-4 text-center">
+        {getModeTitle()}
+        <div className="text-sm text-muted-foreground">
+          {format(timestamp, "h:mm a")}
+        </div>
+      </div>
       <div className="relative aspect-square overflow-hidden rounded-lg">
         <video
           ref={videoRef}
@@ -98,8 +124,11 @@ export default function MealCamera({ onCapture }: MealCameraProps) {
             Start Camera
           </Button>
         ) : (
-          <Button onClick={captureImage}>
-            Take Photo
+          <Button 
+            onClick={captureImage}
+            disabled={isProcessing}
+          >
+            {isProcessing ? "Processing..." : "Take Photo"}
           </Button>
         )}
       </div>
