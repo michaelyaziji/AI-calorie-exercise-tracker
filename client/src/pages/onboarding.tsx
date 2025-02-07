@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useLocation } from "wouter";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { insertUserSchema } from "@shared/schema";
+import { insertUserSchema, InsertUser } from "@shared/schema";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -21,6 +21,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { SiInstagram, SiFacebook, SiTiktok, SiYoutube, SiGoogle } from "react-icons/si";
 import { Tv } from "lucide-react";
+import { nanoid } from 'nanoid';
 
 type OnboardingStep = "gender" | "measurements" | "activity" | "social";
 
@@ -34,11 +35,16 @@ export default function OnboardingPage() {
   const currentStepIndex = STEPS.indexOf(step);
   const progress = ((currentStepIndex + 1) / STEPS.length) * 100;
 
+  // Generate secure random credentials
+  const generateSecureCredentials = () => ({
+    username: `user_${nanoid(10)}`,
+    password: nanoid(16),  // 16 character random string for better security
+  });
+
   const form = useForm({
     resolver: zodResolver(insertUserSchema),
     defaultValues: {
-      username: Math.random().toString(36).slice(2, 10),
-      password: Math.random().toString(36).slice(2, 10),
+      ...generateSecureCredentials(),
       gender: "",
       height: 170,
       weight: 70,
@@ -50,14 +56,24 @@ export default function OnboardingPage() {
   });
 
   const createUser = useMutation({
-    mutationFn: async (data: any) => {
-      const res = await apiRequest("POST", "/api/users", data);
-      return res.json();
+    mutationFn: async (data: InsertUser) => {
+      try {
+        const res = await apiRequest("POST", "/api/users", data);
+        if (!res.ok) {
+          throw new Error('Failed to create user');
+        }
+        return res.json();
+      } catch (error) {
+        throw new Error(error instanceof Error ? error.message : 'Unknown error occurred');
+      }
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
+      // Store credentials securely
+      localStorage.setItem('userId', data.id.toString());
       toast({
         title: "Welcome!",
-        description: "Your account has been created successfully.",
+        description: "Your account has been created successfully. Please save your credentials.",
+        duration: 10000, // 10 seconds
       });
       navigate("/dashboard");
     },

@@ -33,22 +33,53 @@ export function registerRoutes(app: Express): Server {
   // Meal routes
   app.post("/api/meals", async (req, res) => {
     try {
+      // Validate input
       const mealInput = z.object({
-        imageBase64: z.string(),
-        userId: z.number()
+        imageBase64: z.string()
+          .min(1, "Image data is required")
+          .refine(
+            (val) => val.startsWith('data:image'),
+            "Invalid image format"
+          ),
+        userId: z.number().positive("Invalid user ID")
       }).parse(req.body);
 
-      const nutritionInfo = await analyzeFoodImage(mealInput.imageBase64);
+      // Verify user exists
+      const user = await storage.getUser(mealInput.userId);
+      if (!user) {
+        return res.status(404).json({ error: "User not found" });
+      }
+
+      // Process image with error handling
+      let nutritionInfo;
+      try {
+        nutritionInfo = await analyzeFoodImage(mealInput.imageBase64);
+      } catch (error) {
+        console.error('Image analysis failed:', error);
+        return res.status(422).json({ 
+          error: "Failed to analyze food image",
+          details: error instanceof Error ? error.message : "Unknown error"
+        });
+      }
+
+      // Create meal with validated data
       const meal = insertMealSchema.parse({
         userId: mealInput.userId,
-        imageUrl: `data:image/jpeg;base64,${mealInput.imageBase64}`,
+        imageUrl: mealInput.imageBase64,
         ...nutritionInfo
       });
 
       const createdMeal = await storage.createMeal(meal);
       res.json(createdMeal);
+
     } catch (error: unknown) {
-      if (error instanceof Error) {
+      console.error('Meal creation failed:', error);
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ 
+          error: "Validation failed", 
+          details: error.errors 
+        });
+      } else if (error instanceof Error) {
         res.status(400).json({ error: error.message });
       } else {
         res.status(500).json({ error: "An unknown error occurred" });
