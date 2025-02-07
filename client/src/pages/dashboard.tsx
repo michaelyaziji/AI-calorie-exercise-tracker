@@ -9,21 +9,18 @@ import DailyRecommendations from "@/components/daily-recommendations";
 import DateSelector from "@/components/date-selector";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Loader2 } from "lucide-react";
-import type { User, Meal, Progress as ProgressType, Exercise } from "@shared/schema";
+import type { Meal, Progress as ProgressType, Exercise } from "@shared/schema";
 import { format, isSameDay } from "date-fns";
+import { useAuth } from "@/hooks/use-auth";
 
 export default function DashboardPage() {
   const [, navigate] = useLocation();
+  const { user } = useAuth();
+
   const [selectedDate, setSelectedDate] = useState(() => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     return today;
-  });
-
-  const { data: user, isLoading: isLoadingUser, error: userError } = useQuery<User>({
-    queryKey: ["/api/users/me"],
-    retry: 1,
-    retryDelay: 1000,
   });
 
   const { data: meals = [], isLoading: isLoadingMeals } = useQuery<Meal[]>({
@@ -41,23 +38,8 @@ export default function DashboardPage() {
     enabled: !!user,
   });
 
-  // Handle unauthorized error
-  if (userError?.message === "Unauthorized" || userError?.message === "Failed to fetch") {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-screen p-4">
-        <h1 className="text-2xl font-bold mb-4">Please Sign In</h1>
-        <p className="text-muted-foreground mb-6 text-center">
-          Your session has expired or you're not logged in. Please sign in to continue.
-        </p>
-        <Button onClick={() => navigate("/auth")}>
-          Sign In
-        </Button>
-      </div>
-    );
-  }
-
   // Show loading state
-  if (isLoadingUser || (user && (isLoadingMeals || isLoadingProgress || isLoadingExercises))) {
+  if (isLoadingMeals || isLoadingProgress || isLoadingExercises) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen p-4">
         <Loader2 className="h-8 w-8 animate-spin mb-4" />
@@ -66,41 +48,24 @@ export default function DashboardPage() {
     );
   }
 
-  // Handle error states
-  if (!user) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-screen p-4">
-        <h1 className="text-2xl font-bold mb-4">Error</h1>
-        <p className="text-muted-foreground mb-6 text-center">
-          Unable to load your profile. Please try signing in again.
-        </p>
-        <Button onClick={() => navigate("/auth")}>
-          Sign In
-        </Button>
-      </div>
-    );
-  }
-
   // Filter data for selected date
   const selectedMeals = meals.filter(meal => {
     const mealDate = new Date(meal.timestamp);
-    mealDate.setHours(0, 0, 0, 0);
     return isSameDay(mealDate, selectedDate);
   });
 
   const selectedExercises = exercises.filter(exercise => {
     const exerciseDate = new Date(exercise.timestamp);
-    exerciseDate.setHours(0, 0, 0, 0);
     return isSameDay(exerciseDate, selectedDate);
   });
 
-  const weightProgress = user.targetWeight 
-    ? Math.max(0, Math.min(100, ((user.weight - user.targetWeight) / (user.weight - user.targetWeight)) * 100))
+  const weightProgress = user?.targetWeight
+    ? Math.max(0, Math.min(100, ((user.weight - user.targetWeight) / (user.targetWeight - user.weight)) * 100))
     : 0;
 
   return (
     <div className="space-y-6 pb-16">
-      <DateSelector 
+      <DateSelector
         selectedDate={selectedDate}
         onDateChange={setSelectedDate}
       />
@@ -112,8 +77,8 @@ export default function DashboardPage() {
         <CardContent>
           <div className="space-y-2">
             <div className="flex justify-between text-sm">
-              <span>Current: {user.weight}kg</span>
-              <span>Target: {user.targetWeight}kg</span>
+              <span>Current: {user?.weight}kg</span>
+              <span>Target: {user?.targetWeight}kg</span>
             </div>
             <Progress value={weightProgress} className="h-2" />
           </div>
@@ -127,10 +92,10 @@ export default function DashboardPage() {
       )}
 
       <div className="grid gap-6 md:grid-cols-2">
-        {meals.length > 0 && (
+        {selectedMeals.length > 0 && (
           <Card>
             <CardHeader>
-              <CardTitle>Latest Meals</CardTitle>
+              <CardTitle>Today's Meals</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               {selectedMeals.map((meal) => (
@@ -171,10 +136,10 @@ export default function DashboardPage() {
           </Card>
         )}
 
-        {exercises.length > 0 && (
+        {selectedExercises.length > 0 && (
           <Card>
             <CardHeader>
-              <CardTitle>Exercises</CardTitle>
+              <CardTitle>Today's Exercises</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               {selectedExercises.map((exercise) => (
