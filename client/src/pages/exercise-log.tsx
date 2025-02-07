@@ -157,8 +157,10 @@ export default function ExerciseLogPage() {
         {[15, 30, 60, 90].map((mins) => (
           <Button
             key={mins}
+            type="button"
             variant={duration === mins ? "default" : "outline"}
-            onClick={() => {
+            onClick={(e) => {
+              e.preventDefault();
               setDuration(mins);
               form.setValue("duration", mins);
             }}
