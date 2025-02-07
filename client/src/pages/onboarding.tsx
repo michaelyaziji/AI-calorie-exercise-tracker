@@ -31,8 +31,8 @@ export default function OnboardingPage() {
   const form = useForm({
     resolver: zodResolver(insertUserSchema),
     defaultValues: {
-      username: Math.random().toString(36).slice(2, 10), // Generate random username
-      password: Math.random().toString(36).slice(2, 10), // Generate random password
+      username: Math.random().toString(36).slice(2, 10),
+      password: Math.random().toString(36).slice(2, 10),
       gender: "",
       height: 170,
       weight: 70,
@@ -130,7 +130,12 @@ export default function OnboardingPage() {
                       <FormItem>
                         <FormLabel>Height (cm)</FormLabel>
                         <FormControl>
-                          <Input type="number" {...field} />
+                          <Input
+                            type="number"
+                            {...field}
+                            onChange={(e) => field.onChange(Number(e.target.value))}
+                            value={field.value}
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -143,7 +148,12 @@ export default function OnboardingPage() {
                       <FormItem>
                         <FormLabel>Current Weight (kg)</FormLabel>
                         <FormControl>
-                          <Input type="number" {...field} />
+                          <Input
+                            type="number"
+                            {...field}
+                            onChange={(e) => field.onChange(Number(e.target.value))}
+                            value={field.value}
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -156,7 +166,12 @@ export default function OnboardingPage() {
                       <FormItem>
                         <FormLabel>Target Weight (kg)</FormLabel>
                         <FormControl>
-                          <Input type="number" {...field} />
+                          <Input
+                            type="number"
+                            {...field}
+                            onChange={(e) => field.onChange(Number(e.target.value))}
+                            value={field.value}
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
