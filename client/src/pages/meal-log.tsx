@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useLocation } from "wouter";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -12,6 +13,7 @@ export default function MealLogPage() {
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const [, navigate] = useLocation();
 
   const analyzeMeal = useMutation({
     mutationFn: async (imageBase64: string) => {
@@ -27,7 +29,7 @@ export default function MealLogPage() {
         description: "Your meal has been analyzed and saved.",
       });
       queryClient.invalidateQueries({ queryKey: ["/api/users/1/meals"] });
-      setCapturedImage(null);
+      navigate("/dashboard");
     },
     onError: (error) => {
       toast({
@@ -51,7 +53,7 @@ export default function MealLogPage() {
   return (
     <div className="space-y-4 pb-16">
       <h1 className="text-2xl font-bold">Log Your Meal</h1>
-      
+
       {!capturedImage ? (
         <MealCamera onCapture={handleCapture} />
       ) : (

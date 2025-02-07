@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useLocation } from "wouter";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,6 +20,7 @@ export default function ExerciseLogPage() {
   const [duration, setDuration] = useState(15);
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const [, navigate] = useLocation();
 
   const form = useForm({
     resolver: zodResolver(insertExerciseSchema),
@@ -41,8 +43,7 @@ export default function ExerciseLogPage() {
         title: "Exercise logged successfully!",
         description: "Your workout has been recorded.",
       });
-      setSelectedType(null);
-      form.reset();
+      navigate("/dashboard");
     },
     onError: (error: any) => {
       toast({
