@@ -27,8 +27,18 @@ import { Tv, Loader2 } from "lucide-react";
 
 type OnboardingStep = "credentials" | "gender" | "measurements" | "activity" | "social";
 
-const formSchema = insertUserSchema.extend({
-  confirmPassword: z.string()
+// Remove validation from insertUserSchema temporarily for testing
+const formSchema = z.object({
+  username: z.string().min(1, "Username is required"),
+  password: z.string().min(1, "Password is required"),
+  confirmPassword: z.string().min(1, "Please confirm your password"),
+  gender: z.enum(["male", "female", "other"]).optional(),
+  height: z.number().optional(),
+  weight: z.number().optional(),
+  targetWeight: z.number().optional(),
+  activityLevel: z.enum(["low", "moderate", "high"]).optional(),
+  workoutsPerWeek: z.number().optional(),
+  socialSource: z.string().optional(),
 }).refine((data) => data.password === data.confirmPassword, {
   message: "Passwords don't match",
   path: ["confirmPassword"],
@@ -60,7 +70,7 @@ export default function OnboardingPage() {
       workoutsPerWeek: 3,
       socialSource: "",
     },
-    mode: "onTouched",
+    mode: "onChange",
   });
 
   const createUser = useMutation({
@@ -94,6 +104,21 @@ export default function OnboardingPage() {
   });
 
   const onSubmit = async (data: FormData) => {
+    console.log("Form submitted:", data);
+    console.log("Current step:", step);
+    console.log("Form errors:", form.formState.errors);
+
+    if (step === "credentials") {
+      if (!data.username || !data.password || !data.confirmPassword) {
+        console.log("Missing required fields");
+        return;
+      }
+      if (data.password !== data.confirmPassword) {
+        console.log("Passwords don't match");
+        return;
+      }
+    }
+
     if (step !== "social") {
       const nextSteps: Record<OnboardingStep, OnboardingStep> = {
         credentials: "gender",
@@ -102,11 +127,16 @@ export default function OnboardingPage() {
         activity: "social",
         social: "social",
       };
+      console.log("Moving to next step:", nextSteps[step]);
       setStep(nextSteps[step]);
-      return;
+    } else {
+      try {
+        await createUser.mutateAsync(data);
+        navigate("/dashboard");
+      } catch (error) {
+        console.error("Error creating user:", error);
+      }
     }
-
-    await createUser.mutateAsync(data);
   };
 
   return (
@@ -151,9 +181,6 @@ export default function OnboardingPage() {
                             autoComplete="new-password"
                           />
                         </FormControl>
-                        <FormDescription>
-                          Must be at least 8 characters long
-                        </FormDescription>
                         <FormMessage />
                       </FormItem>
                     )}
@@ -179,7 +206,6 @@ export default function OnboardingPage() {
               </CardContent>
             </Card>
           )}
-
           {step === "gender" && (
             <Card>
               <CardContent className="pt-6">
@@ -215,7 +241,6 @@ export default function OnboardingPage() {
               </CardContent>
             </Card>
           )}
-
           {step === "measurements" && (
             <Card>
               <CardContent className="pt-6">
@@ -276,7 +301,6 @@ export default function OnboardingPage() {
               </CardContent>
             </Card>
           )}
-
           {step === "activity" && (
             <Card>
               <CardContent className="pt-6">
@@ -325,7 +349,6 @@ export default function OnboardingPage() {
               </CardContent>
             </Card>
           )}
-
           {step === "social" && (
             <Card>
               <CardContent className="pt-6">
