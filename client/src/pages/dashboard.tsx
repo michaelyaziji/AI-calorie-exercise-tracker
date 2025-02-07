@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Progress } from "@/components/ui/progress";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import ProgressChart from "@/components/progress-chart";
+import DailyRecommendations from "@/components/daily-recommendations";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { User, Meal, Progress as ProgressType } from "@shared/schema";
 
@@ -32,7 +33,15 @@ export default function DashboardPage() {
     return <div>Error loading data</div>;
   }
 
-  const latestMeal = meals[meals.length - 1];
+  // Filter today's meals
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const todaysMeals = meals.filter(meal => {
+    const mealDate = new Date(meal.timestamp);
+    mealDate.setHours(0, 0, 0, 0);
+    return mealDate.getTime() === today.getTime();
+  });
+
   const weightProgress = ((user.weight - user.targetWeight) / (user.weight - user.targetWeight)) * 100;
 
   return (
@@ -52,11 +61,13 @@ export default function DashboardPage() {
         </CardContent>
       </Card>
 
+      <DailyRecommendations user={user} todaysMeals={todaysMeals} />
+
       {progress.length > 0 && (
         <ProgressChart data={progress} />
       )}
 
-      {latestMeal && (
+      {meals.length > 0 && (
         <Card>
           <CardHeader>
             <CardTitle>Latest Meal</CardTitle>
@@ -64,20 +75,20 @@ export default function DashboardPage() {
           <CardContent>
             <div className="grid grid-cols-3 gap-4 text-center">
               <div>
-                <div className="text-2xl font-bold">{latestMeal.protein}g</div>
+                <div className="text-2xl font-bold">{meals[meals.length - 1].protein}g</div>
                 <div className="text-sm text-muted-foreground">Protein</div>
               </div>
               <div>
-                <div className="text-2xl font-bold">{latestMeal.carbs}g</div>
+                <div className="text-2xl font-bold">{meals[meals.length - 1].carbs}g</div>
                 <div className="text-sm text-muted-foreground">Carbs</div>
               </div>
               <div>
-                <div className="text-2xl font-bold">{latestMeal.fat}g</div>
+                <div className="text-2xl font-bold">{meals[meals.length - 1].fat}g</div>
                 <div className="text-sm text-muted-foreground">Fat</div>
               </div>
             </div>
             <div className="mt-4 text-center">
-              <div className="text-3xl font-bold">{latestMeal.calories}</div>
+              <div className="text-3xl font-bold">{meals[meals.length - 1].calories}</div>
               <div className="text-sm text-muted-foreground">Calories</div>
             </div>
           </CardContent>

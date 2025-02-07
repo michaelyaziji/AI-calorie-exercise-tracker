@@ -13,6 +13,10 @@ export const users = pgTable("users", {
   activityLevel: text("activity_level").notNull(),
   workoutsPerWeek: integer("workouts_per_week").notNull(),
   socialSource: text("social_source").notNull(),
+  dailyCalories: integer("daily_calories").notNull().default(2000),
+  dailyProtein: real("daily_protein").notNull().default(150),
+  dailyCarbs: real("daily_carbs").notNull().default(200),
+  dailyFat: real("daily_fat").notNull().default(50),
 });
 
 export const meals = pgTable("meals", {
