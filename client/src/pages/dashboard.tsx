@@ -22,12 +22,13 @@ export default function DashboardPage() {
 
   const { data: user, isLoading: isLoadingUser, error: userError } = useQuery<User>({
     queryKey: ["/api/users/me"],
-    retry: false,
+    retry: 1,
+    retryDelay: 1000,
   });
 
   const { data: meals, isLoading: isLoadingMeals } = useQuery<Meal[]>({
     queryKey: ["/api/meals"],
-    enabled: !!user, // Only fetch if user is authenticated
+    enabled: !!user,
   });
 
   const { data: exercises, isLoading: isLoadingExercises } = useQuery<Exercise[]>({
@@ -44,9 +45,9 @@ export default function DashboardPage() {
   if (userError?.message === "Unauthorized" || userError?.message === "Failed to fetch") {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen p-4">
-        <h1 className="text-2xl font-bold mb-4">Session Expired</h1>
+        <h1 className="text-2xl font-bold mb-4">Please Sign In</h1>
         <p className="text-muted-foreground mb-6 text-center">
-          Your session has expired or you're not logged in. Please sign in again to continue.
+          Your session has expired or you're not logged in. Please sign in to continue.
         </p>
         <Button onClick={() => navigate("/auth")}>
           Sign In
@@ -55,21 +56,27 @@ export default function DashboardPage() {
     );
   }
 
-  if (isLoadingUser || isLoadingMeals || isLoadingProgress || isLoadingExercises) {
-    return (
-      <div className="space-y-4">
-        <Skeleton className="h-[100px] w-full" />
-        <Skeleton className="h-[300px] w-full" />
-        <Skeleton className="h-[200px] w-full" />
-      </div>
-    );
-  }
-
-  if (!user || !meals || !progress || !exercises) {
+  // Show loading state
+  if (isLoadingUser || (user && (isLoadingMeals || isLoadingProgress || isLoadingExercises))) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen p-4">
         <Loader2 className="h-8 w-8 animate-spin mb-4" />
         <p className="text-muted-foreground">Loading your data...</p>
+      </div>
+    );
+  }
+
+  // Handle error states
+  if (!user) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen p-4">
+        <h1 className="text-2xl font-bold mb-4">Error</h1>
+        <p className="text-muted-foreground mb-6 text-center">
+          Unable to load your profile. Please try signing in again.
+        </p>
+        <Button onClick={() => navigate("/auth")}>
+          Sign In
+        </Button>
       </div>
     );
   }

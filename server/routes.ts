@@ -7,15 +7,23 @@ import { z } from "zod";
 import rateLimit from "express-rate-limit";
 import session from "express-session";
 import bcrypt from "bcryptjs";
+import MemoryStore from "memorystore";
 
-// Session middleware
+const MemoryStoreSession = MemoryStore(session);
+
+// Session middleware with secure configuration
 const sessionMiddleware = session({
   secret: process.env.REPL_ID!, // Use REPL_ID as session secret
   resave: false,
   saveUninitialized: false,
+  store: new MemoryStoreSession({
+    checkPeriod: 86400000 // prune expired entries every 24h
+  }),
   cookie: {
     secure: process.env.NODE_ENV === "production",
+    httpOnly: true,
     maxAge: 24 * 60 * 60 * 1000, // 24 hours
+    sameSite: 'lax'
   },
 });
 
@@ -86,8 +94,21 @@ export function registerRoutes(app: Express): Server {
   app.post("/api/users", async (req, res, next) => {
     try {
       const userData = await insertUserSchema.parseAsync(req.body);
-      const user = await storage.createUser(userData);
+      const hashedPassword = await bcrypt.hash(userData.password, 10);
+      const user = await storage.createUser({
+        ...userData,
+        password: hashedPassword
+      });
+
+      // Set session immediately after user creation
       req.session.userId = user.id;
+      await new Promise((resolve, reject) => {
+        req.session.save((err) => {
+          if (err) reject(err);
+          resolve(null);
+        });
+      });
+
       const { password: _, ...userWithoutPassword } = user;
       res.json(userWithoutPassword);
     } catch (error) {
