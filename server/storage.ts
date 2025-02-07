@@ -1,4 +1,4 @@
-import { type User, type InsertUser, type Meal, type InsertMeal, type Progress, type InsertProgress, users, meals, progress } from "@shared/schema";
+import { type User, type InsertUser, type Meal, type InsertMeal, type Progress, type InsertProgress, type Exercise, type InsertExercise, users, meals, progress, exercises } from "@shared/schema";
 import { db } from "./db";
 import { eq } from "drizzle-orm";
 
@@ -14,6 +14,10 @@ export interface IStorage {
   // Progress operations
   createProgress(progress: InsertProgress): Promise<Progress>;
   getProgressByUserId(userId: number): Promise<Progress[]>;
+
+  // Exercise operations
+  createExercise(exercise: InsertExercise): Promise<Exercise>;
+  getExercisesByUserId(userId: number): Promise<Exercise[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -50,11 +54,11 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createProgress(insertProgress: InsertProgress): Promise<Progress> {
-    const [progress] = await db
+    const [progressEntry] = await db
       .insert(progress)
       .values(insertProgress)
       .returning();
-    return progress;
+    return progressEntry;
   }
 
   async getProgressByUserId(userId: number): Promise<Progress[]> {
@@ -63,6 +67,22 @@ export class DatabaseStorage implements IStorage {
       .from(progress)
       .where(eq(progress.userId, userId))
       .orderBy(progress.timestamp);
+  }
+
+  async createExercise(insertExercise: InsertExercise): Promise<Exercise> {
+    const [exercise] = await db
+      .insert(exercises)
+      .values(insertExercise)
+      .returning();
+    return exercise;
+  }
+
+  async getExercisesByUserId(userId: number): Promise<Exercise[]> {
+    return db
+      .select()
+      .from(exercises)
+      .where(eq(exercises.userId, userId))
+      .orderBy(exercises.timestamp);
   }
 }
 
