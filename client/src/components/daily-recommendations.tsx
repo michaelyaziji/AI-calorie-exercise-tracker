@@ -1,5 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
+import { motion, AnimatePresence } from "framer-motion";
+import { Sparkles } from "lucide-react";
 import type { User, Meal } from "@shared/schema";
 
 interface DailyRecommendationsProps {
@@ -39,6 +41,50 @@ export default function DailyRecommendations({ user, todaysMeals }: DailyRecomme
 
   const healthScore = calculateHealthScore();
 
+  // Helper function to check if a goal is met (between 90-110% of target)
+  const isGoalMet = (progress: number) => progress >= 90 && progress <= 110;
+
+  const ProgressWithAnimation = ({ value, total, label }: { value: number, total: number, label: string }) => {
+    const progress = (value / total) * 100;
+    const goalMet = isGoalMet(progress);
+
+    return (
+      <div className="space-y-2">
+        <div className="flex justify-between text-sm">
+          <span>{label}</span>
+          <div className="flex items-center gap-2">
+            <span>{Math.round(value)} / {total}{label === "Calories" ? "" : "g"}</span>
+            <AnimatePresence>
+              {goalMet && (
+                <motion.div
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  exit={{ scale: 0 }}
+                  className="text-yellow-500"
+                >
+                  <Sparkles className="w-4 h-4" />
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+        </div>
+        <div className="relative h-2">
+          <Progress
+            value={Math.min(100, progress)}
+            className={`h-2 ${goalMet ? 'bg-primary/20' : 'bg-muted'}`}
+          />
+          {goalMet && (
+            <motion.div
+              className="absolute inset-0 bg-primary/30 rounded-full"
+              animate={{ opacity: [0.5, 0.8, 0.5] }}
+              transition={{ duration: 2, repeat: Infinity }}
+            />
+          )}
+        </div>
+      </div>
+    );
+  };
+
   return (
     <Card>
       <CardHeader>
@@ -46,37 +92,35 @@ export default function DailyRecommendations({ user, todaysMeals }: DailyRecomme
       </CardHeader>
       <CardContent className="space-y-8">
         <div className="grid grid-cols-2 gap-4">
-          <div className="space-y-2">
-            <div className="flex justify-between text-sm">
-              <span>Calories</span>
-              <span>{dailyTotals.calories} / {user.dailyCalories}</span>
-            </div>
-            <Progress value={Math.min(100, caloriesProgress)} className="h-2" />
-          </div>
-          <div className="space-y-2">
-            <div className="flex justify-between text-sm">
-              <span>Carbs</span>
-              <span>{Math.round(dailyTotals.carbs)}g / {user.dailyCarbs}g</span>
-            </div>
-            <Progress value={Math.min(100, carbsProgress)} className="h-2" />
-          </div>
-          <div className="space-y-2">
-            <div className="flex justify-between text-sm">
-              <span>Protein</span>
-              <span>{Math.round(dailyTotals.protein)}g / {user.dailyProtein}g</span>
-            </div>
-            <Progress value={Math.min(100, proteinProgress)} className="h-2" />
-          </div>
-          <div className="space-y-2">
-            <div className="flex justify-between text-sm">
-              <span>Fats</span>
-              <span>{Math.round(dailyTotals.fat)}g / {user.dailyFat}g</span>
-            </div>
-            <Progress value={Math.min(100, fatProgress)} className="h-2" />
-          </div>
+          <ProgressWithAnimation
+            value={dailyTotals.calories}
+            total={user.dailyCalories}
+            label="Calories"
+          />
+          <ProgressWithAnimation
+            value={dailyTotals.carbs}
+            total={user.dailyCarbs}
+            label="Carbs"
+          />
+          <ProgressWithAnimation
+            value={dailyTotals.protein}
+            total={user.dailyProtein}
+            label="Protein"
+          />
+          <ProgressWithAnimation
+            value={dailyTotals.fat}
+            total={user.dailyFat}
+            label="Fats"
+          />
         </div>
 
-        <div className="flex items-center gap-4 p-4 bg-muted rounded-lg">
+        <motion.div
+          className="flex items-center gap-4 p-4 bg-muted rounded-lg"
+          animate={healthScore >= 7 ? {
+            scale: [1, 1.02, 1],
+            transition: { duration: 1, repeat: Infinity }
+          } : {}}
+        >
           <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
             <span className="text-2xl font-bold text-primary">{healthScore}</span>
           </div>
@@ -84,7 +128,19 @@ export default function DailyRecommendations({ user, todaysMeals }: DailyRecomme
             <div className="font-semibold">Health Score</div>
             <div className="text-sm text-muted-foreground">Based on daily targets</div>
           </div>
-        </div>
+          <AnimatePresence>
+            {healthScore >= 7 && (
+              <motion.div
+                initial={{ opacity: 0, scale: 0 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0 }}
+                className="ml-auto"
+              >
+                <Sparkles className="w-6 h-6 text-yellow-500" />
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </motion.div>
       </CardContent>
     </Card>
   );
