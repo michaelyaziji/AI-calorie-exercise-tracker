@@ -46,6 +46,13 @@ export const exercises = pgTable("exercises", {
   intensity: text("intensity"),
   duration: integer("duration"),
   description: text("description"),
+  // Add fields for weightlifting
+  sets: integer("sets"),
+  reps: integer("reps"),
+  weight: real("weight"),
+  // Add fields for running
+  distance: real("distance"),
+  pace: real("pace"),
   timestamp: timestamp("timestamp").notNull().defaultNow(),
 });
 
@@ -64,11 +71,37 @@ export const insertUserSchema = createInsertSchema(users, {
 export const insertMealSchema = createInsertSchema(meals).omit({ id: true, timestamp: true });
 export const insertProgressSchema = createInsertSchema(progress).omit({ id: true, timestamp: true });
 export const insertExerciseSchema = createInsertSchema(exercises, {
-  type: z.string().default("custom"), 
+  type: z.enum(["custom", "run", "weightlifting"]),
   intensity: z.string().optional(),
   duration: z.number().optional(),
   description: z.string().optional(),
-}).omit({ id: true, timestamp: true });
+  // Weightlifting specific fields
+  sets: z.number().optional(),
+  reps: z.number().optional(),
+  weight: z.number().optional(),
+  // Running specific fields
+  distance: z.number().optional(),
+  pace: z.number().optional(),
+}).omit({ id: true, timestamp: true })
+.superRefine((data, ctx) => {
+  if (data.type === "weightlifting") {
+    if (!data.sets || !data.reps || !data.weight) {
+      ctx.addIssue({
+        code: "custom",
+        message: "Sets, reps, and weight are required for weightlifting exercises",
+        path: ["type"],
+      });
+    }
+  } else if (data.type === "run") {
+    if (!data.distance || !data.duration) {
+      ctx.addIssue({
+        code: "custom",
+        message: "Distance and duration are required for running exercises",
+        path: ["type"],
+      });
+    }
+  }
+});
 
 export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
