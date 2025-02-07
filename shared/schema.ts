@@ -63,7 +63,12 @@ export const insertUserSchema = createInsertSchema(users, {
 
 export const insertMealSchema = createInsertSchema(meals).omit({ id: true, timestamp: true });
 export const insertProgressSchema = createInsertSchema(progress).omit({ id: true, timestamp: true });
-export const insertExerciseSchema = createInsertSchema(exercises).omit({ id: true, timestamp: true });
+export const insertExerciseSchema = createInsertSchema(exercises, {
+  type: z.string().default("custom"), 
+  intensity: z.string().optional(),
+  duration: z.number().optional(),
+  description: z.string().optional(),
+}).omit({ id: true, timestamp: true });
 
 export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;

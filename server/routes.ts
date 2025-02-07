@@ -115,11 +115,31 @@ export function registerRoutes(app: Express): Server {
   // Exercise routes
   app.post("/api/exercises", async (req, res) => {
     try {
-      const exerciseData = insertExerciseSchema.parse(req.body);
+      // Validate input and set defaults
+      const exerciseData = insertExerciseSchema.parse({
+        ...req.body,
+        type: req.body.type || "custom" // Ensure type has a default
+      });
+
+      // Verify user exists
+      const user = await storage.getUser(exerciseData.userId);
+      if (!user) {
+        return res.status(404).json({ error: "User not found" });
+      }
+
+      // Create exercise with validated data
       const exercise = await storage.createExercise(exerciseData);
+      console.log('Exercise created:', exercise); // Add logging
       res.json(exercise);
+
     } catch (error: unknown) {
-      if (error instanceof Error) {
+      console.error('Exercise creation failed:', error);
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ 
+          error: "Validation failed", 
+          details: error.errors 
+        });
+      } else if (error instanceof Error) {
         res.status(400).json({ error: error.message });
       } else {
         res.status(500).json({ error: "An unknown error occurred" });
