@@ -72,49 +72,47 @@ export default function MealLogPage() {
       ) : (
         <Card>
           <CardContent className="pt-6">
-            <img
-              src={`data:image/jpeg;base64,${capturedImage}`}
-              alt="Captured meal"
-              className="w-full rounded-lg"
-            />
             {productInfo && (
-              <div className="mt-4 space-y-2">
+              <div className="mb-4">
                 <div className="flex justify-between items-center">
-                  <h3 className="font-medium text-lg">{productInfo.name}</h3>
+                  <h3 className="font-semibold text-xl">{productInfo.name}</h3>
                   <span className="text-sm text-muted-foreground">
                     {format(new Date(), "h:mm a")}
                   </span>
                 </div>
-                <div className="flex items-center gap-1 text-lg font-semibold">
+              </div>
+            )}
+            <img
+              src={`data:image/jpeg;base64,${capturedImage}`}
+              alt="Captured meal"
+              className="w-full rounded-lg mb-4"
+            />
+            {productInfo && (
+              <div className="space-y-4">
+                <div className="flex items-center gap-2 text-lg">
                   <Flame className="h-5 w-5 text-orange-500" />
-                  {productInfo.calories} calories
+                  <span className="font-semibold">{productInfo.calories} calories</span>
                 </div>
-                <div className="grid grid-cols-3 gap-4">
-                  <div className="flex items-center gap-2">
+                <div className="grid grid-cols-3 gap-6">
+                  <div className="space-y-1">
                     <span className="text-red-500">🥩</span>
-                    <div>
-                      <div className="font-medium">{productInfo.protein}g</div>
-                      <div className="text-xs text-muted-foreground">protein</div>
-                    </div>
+                    <div className="font-semibold">{productInfo.protein}g</div>
+                    <div className="text-xs text-muted-foreground">protein</div>
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="space-y-1">
                     <span className="text-amber-500">🌾</span>
-                    <div>
-                      <div className="font-medium">{productInfo.carbs}g</div>
-                      <div className="text-xs text-muted-foreground">carbs</div>
-                    </div>
+                    <div className="font-semibold">{productInfo.carbs}g</div>
+                    <div className="text-xs text-muted-foreground">carbs</div>
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="space-y-1">
                     <span className="text-blue-500">💧</span>
-                    <div>
-                      <div className="font-medium">{productInfo.fat}g</div>
-                      <div className="text-xs text-muted-foreground">fat</div>
-                    </div>
+                    <div className="font-semibold">{productInfo.fat}g</div>
+                    <div className="text-xs text-muted-foreground">fat</div>
                   </div>
                 </div>
               </div>
             )}
-            <div className="flex justify-between mt-4">
+            <div className="flex justify-between mt-6">
               <Button variant="outline" onClick={() => {
                 setCapturedImage(null);
                 setProductInfo(null);

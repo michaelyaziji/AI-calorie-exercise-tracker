@@ -14,7 +14,7 @@ export async function lookupBarcode(barcode: string): Promise<ProductInfo | null
     const response = await fetch(`${OPEN_FOOD_FACTS_API}${barcode}.json`);
     const data = await response.json();
 
-    if (!data.status_verbose === "product found" || !data.product) {
+    if (data.status === 0 || !data.product) {
       return null;
     }
 
@@ -23,10 +23,10 @@ export async function lookupBarcode(barcode: string): Promise<ProductInfo | null
 
     return {
       name: product.product_name || "Unknown Product",
-      calories: nutriments["energy-kcal_100g"] || 0,
-      protein: nutriments.proteins_100g || 0,
-      carbs: nutriments.carbohydrates_100g || 0,
-      fat: nutriments.fat_100g || 0,
+      calories: Math.round(nutriments["energy-kcal_100g"] || 0),
+      protein: Math.round((nutriments.proteins_100g || 0) * 10) / 10,
+      carbs: Math.round((nutriments.carbohydrates_100g || 0) * 10) / 10,
+      fat: Math.round((nutriments.fat_100g || 0) * 10) / 10,
       imageUrl: product.image_url
     };
   } catch (error) {
