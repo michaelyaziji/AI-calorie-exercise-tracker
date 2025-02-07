@@ -5,6 +5,28 @@ import { analyzeFoodImage } from "./ai";
 import { insertUserSchema, insertMealSchema, insertProgressSchema, insertExerciseSchema } from "@shared/schema";
 import { z } from "zod";
 import rateLimit from "express-rate-limit";
+import session from "express-session";
+import bcrypt from "bcryptjs";
+
+// Session middleware
+const sessionMiddleware = session({
+  secret: process.env.REPL_ID!, // Use REPL_ID as session secret
+  resave: false,
+  saveUninitialized: false,
+  cookie: {
+    secure: process.env.NODE_ENV === "production",
+    maxAge: 24 * 60 * 60 * 1000, // 24 hours
+  },
+});
+
+// Authentication middleware
+function requireAuth(req: Request, res: Response, next: NextFunction) {
+  if (!req.session.userId) {
+    res.status(401).json({ error: "Unauthorized" });
+    return;
+  }
+  next();
+}
 
 // Error handler middleware
 function errorHandler(err: Error, req: Request, res: Response, next: NextFunction) {
@@ -26,38 +48,61 @@ function errorHandler(err: Error, req: Request, res: Response, next: NextFunctio
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
   max: 100, // limit each IP to 100 requests per windowMs
-  standardHeaders: true, // Send standard rate limit headers
-  legacyHeaders: false, // Don't send legacy rate limit headers
-  trustProxy: true // Trust X-Forwarded-For header
+  standardHeaders: true,
+  legacyHeaders: false,
 });
 
 export function registerRoutes(app: Express): Server {
-  // Trust proxy - required for rate limiting to work properly behind a proxy
   app.set('trust proxy', 1);
-
-  // Apply rate limiting to all routes
   app.use(limiter);
+  app.use(sessionMiddleware);
+
+  // Auth routes
+  app.post("/api/login", async (req, res, next) => {
+    try {
+      const { username, password } = req.body;
+      const user = await storage.getUserByUsername(username);
+
+      if (!user || !(await bcrypt.compare(password, user.password))) {
+        res.status(401).json({ error: "Invalid credentials" });
+        return;
+      }
+
+      req.session.userId = user.id;
+      const { password: _, ...userWithoutPassword } = user;
+      res.json(userWithoutPassword);
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.post("/api/logout", (req, res) => {
+    req.session.destroy(() => {
+      res.sendStatus(200);
+    });
+  });
 
   // User routes
   app.post("/api/users", async (req, res, next) => {
     try {
       const userData = await insertUserSchema.parseAsync(req.body);
       const user = await storage.createUser(userData);
-      res.json(user);
+      req.session.userId = user.id;
+      const { password: _, ...userWithoutPassword } = user;
+      res.json(userWithoutPassword);
     } catch (error) {
       next(error);
     }
   });
 
-  app.get("/api/users/:id", async (req, res, next) => {
+  app.get("/api/users/me", requireAuth, async (req, res, next) => {
     try {
-      const user = await storage.getUser(Number(req.params.id));
+      const user = await storage.getUser(req.session.userId!);
       if (!user) {
         res.status(404).json({ error: "User not found" });
         return;
       }
-      // Don't send password in response
-      const { password, ...userWithoutPassword } = user;
+      const { password: _, ...userWithoutPassword } = user;
       res.json(userWithoutPassword);
     } catch (error) {
       next(error);
@@ -65,21 +110,18 @@ export function registerRoutes(app: Express): Server {
   });
 
   // Meal routes
-  app.post("/api/meals", async (req, res, next) => {
+  app.post("/api/meals", requireAuth, async (req, res, next) => {
     try {
       const mealInput = await z.object({
         imageBase64: z.string(),
-        userId: z.number()
       }).parseAsync(req.body);
 
       const nutritionInfo = await analyzeFoodImage(mealInput.imageBase64);
 
-      // Store image URL instead of base64
       const imageUrl = `${process.env.STORAGE_URL}/meals/${Date.now()}.jpg`;
-      // TODO: Implement proper image storage service
 
       const meal = await insertMealSchema.parseAsync({
-        userId: mealInput.userId,
+        userId: req.session.userId!,
         imageUrl,
         ...nutritionInfo
       });
@@ -91,9 +133,9 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
-  app.get("/api/users/:userId/meals", async (req, res, next) => {
+  app.get("/api/meals", requireAuth, async (req, res, next) => {
     try {
-      const meals = await storage.getMealsByUserId(Number(req.params.userId));
+      const meals = await storage.getMealsByUserId(req.session.userId!);
       res.json(meals);
     } catch (error) {
       next(error);
@@ -101,9 +143,12 @@ export function registerRoutes(app: Express): Server {
   });
 
   // Progress routes
-  app.post("/api/progress", async (req, res, next) => {
+  app.post("/api/progress", requireAuth, async (req, res, next) => {
     try {
-      const progressData = await insertProgressSchema.parseAsync(req.body);
+      const progressData = await insertProgressSchema.parseAsync({
+        ...req.body,
+        userId: req.session.userId!
+      });
       const progress = await storage.createProgress(progressData);
       res.json(progress);
     } catch (error) {
@@ -111,9 +156,9 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
-  app.get("/api/users/:userId/progress", async (req, res, next) => {
+  app.get("/api/progress", requireAuth, async (req, res, next) => {
     try {
-      const progress = await storage.getProgressByUserId(Number(req.params.userId));
+      const progress = await storage.getProgressByUserId(req.session.userId!);
       res.json(progress);
     } catch (error) {
       next(error);
@@ -121,9 +166,12 @@ export function registerRoutes(app: Express): Server {
   });
 
   // Exercise routes
-  app.post("/api/exercises", async (req, res, next) => {
+  app.post("/api/exercises", requireAuth, async (req, res, next) => {
     try {
-      const exerciseData = await insertExerciseSchema.parseAsync(req.body);
+      const exerciseData = await insertExerciseSchema.parseAsync({
+        ...req.body,
+        userId: req.session.userId!
+      });
       const exercise = await storage.createExercise(exerciseData);
       res.json(exercise);
     } catch (error) {
@@ -131,16 +179,15 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
-  app.get("/api/users/:userId/exercises", async (req, res, next) => {
+  app.get("/api/exercises", requireAuth, async (req, res, next) => {
     try {
-      const exercises = await storage.getExercisesByUserId(Number(req.params.userId));
+      const exercises = await storage.getExercisesByUserId(req.session.userId!);
       res.json(exercises);
     } catch (error) {
       next(error);
     }
   });
 
-  // Register error handler
   app.use(errorHandler);
 
   const httpServer = createServer(app);

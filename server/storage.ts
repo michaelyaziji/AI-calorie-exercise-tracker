@@ -5,6 +5,7 @@ import { eq } from "drizzle-orm";
 export interface IStorage {
   createUser(user: InsertUser): Promise<User>;
   getUser(id: number): Promise<User | undefined>;
+  getUserByUsername(username: string): Promise<User | undefined>;
   createMeal(meal: InsertMeal): Promise<Meal>;
   getMealsByUserId(userId: number): Promise<Meal[]>;
   createProgress(progress: InsertProgress): Promise<Progress>;
@@ -49,6 +50,17 @@ export class DatabaseStorage implements IStorage {
         .limit(1);
       return user;
     }, `Failed to get user with ID ${id}`);
+  }
+
+  async getUserByUsername(username: string): Promise<User | undefined> {
+    return this.withErrorHandling(async () => {
+      const [user] = await db
+        .select()
+        .from(users)
+        .where(eq(users.username, username))
+        .limit(1);
+      return user;
+    }, `Failed to get user with username ${username}`);
   }
 
   async createMeal(insertMeal: InsertMeal): Promise<Meal> {

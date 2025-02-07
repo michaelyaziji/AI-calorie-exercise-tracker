@@ -17,19 +17,19 @@ export default function DashboardPage() {
   });
 
   const { data: user, isLoading: isLoadingUser } = useQuery<User>({
-    queryKey: ["/api/users/1"], // Hardcoded for demo
+    queryKey: ["/api/users/me"],
   });
 
   const { data: meals, isLoading: isLoadingMeals } = useQuery<Meal[]>({
-    queryKey: ["/api/users/1/meals"],
+    queryKey: ["/api/meals"],
   });
 
   const { data: exercises, isLoading: isLoadingExercises } = useQuery<Exercise[]>({
-    queryKey: ["/api/users/1/exercises"],
+    queryKey: ["/api/exercises"],
   });
 
   const { data: progress, isLoading: isLoadingProgress } = useQuery<ProgressType[]>({
-    queryKey: ["/api/users/1/progress"],
+    queryKey: ["/api/progress"],
   });
 
   if (isLoadingUser || isLoadingMeals || isLoadingProgress || isLoadingExercises) {
