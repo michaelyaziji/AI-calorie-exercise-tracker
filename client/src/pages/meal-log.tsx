@@ -6,9 +6,10 @@ import { useToast } from "@/hooks/use-toast";
 import MealCamera from "@/components/meal-camera";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Loader2 } from "lucide-react";
+import { Loader2, Flame } from "lucide-react";
 import type { Meal } from "@shared/schema";
 import type { ProductInfo } from "@/lib/barcode-service";
+import { format } from "date-fns";
 
 export default function MealLogPage() {
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
@@ -78,23 +79,37 @@ export default function MealLogPage() {
             />
             {productInfo && (
               <div className="mt-4 space-y-2">
-                <h3 className="font-medium">{productInfo.name}</h3>
-                <div className="grid grid-cols-4 gap-4 text-center">
-                  <div>
-                    <div className="font-medium">{productInfo.calories}</div>
-                    <div className="text-xs text-muted-foreground">calories</div>
+                <div className="flex justify-between items-center">
+                  <h3 className="font-medium text-lg">{productInfo.name}</h3>
+                  <span className="text-sm text-muted-foreground">
+                    {format(new Date(), "h:mm a")}
+                  </span>
+                </div>
+                <div className="flex items-center gap-1 text-lg font-semibold">
+                  <Flame className="h-5 w-5 text-orange-500" />
+                  {productInfo.calories} calories
+                </div>
+                <div className="grid grid-cols-3 gap-4">
+                  <div className="flex items-center gap-2">
+                    <span className="text-red-500">🥩</span>
+                    <div>
+                      <div className="font-medium">{productInfo.protein}g</div>
+                      <div className="text-xs text-muted-foreground">protein</div>
+                    </div>
                   </div>
-                  <div>
-                    <div className="font-medium">{productInfo.protein}g</div>
-                    <div className="text-xs text-muted-foreground">protein</div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-amber-500">🌾</span>
+                    <div>
+                      <div className="font-medium">{productInfo.carbs}g</div>
+                      <div className="text-xs text-muted-foreground">carbs</div>
+                    </div>
                   </div>
-                  <div>
-                    <div className="font-medium">{productInfo.carbs}g</div>
-                    <div className="text-xs text-muted-foreground">carbs</div>
-                  </div>
-                  <div>
-                    <div className="font-medium">{productInfo.fat}g</div>
-                    <div className="text-xs text-muted-foreground">fat</div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-blue-500">💧</span>
+                    <div>
+                      <div className="font-medium">{productInfo.fat}g</div>
+                      <div className="text-xs text-muted-foreground">fat</div>
+                    </div>
                   </div>
                 </div>
               </div>
