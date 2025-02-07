@@ -2,10 +2,12 @@ import { useState } from "react";
 import { useLocation } from "wouter";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
 import { insertUserSchema } from "@shared/schema";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import bcrypt from "bcryptjs";
 import {
   Form,
   FormControl,
@@ -13,6 +15,7 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
+  FormDescription,
 } from "@/components/ui/form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -20,25 +23,33 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { SiInstagram, SiFacebook, SiTiktok, SiYoutube, SiGoogle } from "react-icons/si";
-import { Tv } from "lucide-react";
+import { Tv, Loader2 } from "lucide-react";
 
-type OnboardingStep = "gender" | "measurements" | "activity" | "social";
+type OnboardingStep = "credentials" | "gender" | "measurements" | "activity" | "social";
 
-const STEPS = ["gender", "measurements", "activity", "social"] as const;
+const STEPS = ["credentials", "gender", "measurements", "activity", "social"] as const;
+
+const extendedUserSchema = insertUserSchema.extend({
+  confirmPassword: z.string(),
+}).refine((data) => data.password === data.confirmPassword, {
+  message: "Passwords don't match",
+  path: ["confirmPassword"],
+});
 
 export default function OnboardingPage() {
   const [, navigate] = useLocation();
   const { toast } = useToast();
-  const [step, setStep] = useState<OnboardingStep>("gender");
+  const [step, setStep] = useState<OnboardingStep>("credentials");
 
   const currentStepIndex = STEPS.indexOf(step);
   const progress = ((currentStepIndex + 1) / STEPS.length) * 100;
 
   const form = useForm({
-    resolver: zodResolver(insertUserSchema),
+    resolver: zodResolver(extendedUserSchema),
     defaultValues: {
-      username: Math.random().toString(36).slice(2, 10),
-      password: Math.random().toString(36).slice(2, 10),
+      username: "",
+      password: "",
+      confirmPassword: "",
       gender: "",
       height: 170,
       weight: 70,
@@ -51,7 +62,14 @@ export default function OnboardingPage() {
 
   const createUser = useMutation({
     mutationFn: async (data: any) => {
-      const res = await apiRequest("POST", "/api/users", data);
+      // Hash password before sending to server
+      const hashedPassword = await bcrypt.hash(data.password, 10);
+      const { confirmPassword, ...userData } = {
+        ...data,
+        password: hashedPassword,
+      };
+
+      const res = await apiRequest("POST", "/api/users", userData);
       return res.json();
     },
     onSuccess: () => {
@@ -61,7 +79,7 @@ export default function OnboardingPage() {
       });
       navigate("/dashboard");
     },
-    onError: (error) => {
+    onError: (error: Error) => {
       toast({
         title: "Error",
         description: error.message,
@@ -73,6 +91,7 @@ export default function OnboardingPage() {
   const onSubmit = form.handleSubmit((data) => {
     if (step !== "social") {
       const nextSteps: Record<OnboardingStep, OnboardingStep> = {
+        credentials: "gender",
         gender: "measurements",
         measurements: "activity",
         activity: "social",
@@ -83,6 +102,8 @@ export default function OnboardingPage() {
       createUser.mutate(data);
     }
   });
+
+  const isLoading = createUser.isPending;
 
   return (
     <div className="container max-w-md mx-auto px-4 pt-8">
@@ -95,6 +116,58 @@ export default function OnboardingPage() {
 
       <Form {...form}>
         <form onSubmit={onSubmit} className="space-y-8">
+          {step === "credentials" && (
+            <Card>
+              <CardContent className="pt-6">
+                <h1 className="text-2xl font-bold mb-6">Create Your Account</h1>
+                <div className="space-y-4">
+                  <FormField
+                    control={form.control}
+                    name="username"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Username</FormLabel>
+                        <FormControl>
+                          <Input {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="password"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Password</FormLabel>
+                        <FormControl>
+                          <Input type="password" {...field} />
+                        </FormControl>
+                        <FormDescription>
+                          Must be at least 8 characters long
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="confirmPassword"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Confirm Password</FormLabel>
+                        <FormControl>
+                          <Input type="password" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
           {step === "gender" && (
             <Card>
               <CardContent className="pt-6">
@@ -293,9 +366,16 @@ export default function OnboardingPage() {
           <Button
             type="submit"
             className="w-full"
-            disabled={createUser.isPending}
+            disabled={isLoading}
           >
-            {step === "social" ? "Get Started" : "Next"}
+            {isLoading ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Please wait
+              </>
+            ) : (
+              step === "social" ? "Get Started" : "Next"
+            )}
           </Button>
         </form>
       </Form>

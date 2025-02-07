@@ -1,4 +1,4 @@
-import { pgTable, text, serial, integer, boolean, jsonb, timestamp, real } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, boolean, jsonb, timestamp, real, index, primaryKey } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -17,40 +17,95 @@ export const users = pgTable("users", {
   dailyProtein: real("daily_protein").notNull().default(150),
   dailyCarbs: real("daily_carbs").notNull().default(200),
   dailyFat: real("daily_fat").notNull().default(50),
+}, (table) => {
+  return {
+    usernameIdx: index("username_idx").on(table.username),
+  }
 });
 
 export const meals = pgTable("meals", {
   id: serial("id").primaryKey(),
-  userId: integer("user_id").notNull(),
+  userId: integer("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: 'cascade' }),
   imageUrl: text("image_url").notNull(),
   calories: integer("calories").notNull(),
   protein: real("protein").notNull(),
   carbs: real("carbs").notNull(),
   fat: real("fat").notNull(),
   timestamp: timestamp("timestamp").notNull().defaultNow(),
+}, (table) => {
+  return {
+    userIdIdx: index("meals_user_id_idx").on(table.userId),
+    timestampIdx: index("meals_timestamp_idx").on(table.timestamp),
+  }
 });
 
 export const progress = pgTable("progress", {
   id: serial("id").primaryKey(),
-  userId: integer("user_id").notNull(),
+  userId: integer("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: 'cascade' }),
   weight: real("weight").notNull(),
   timestamp: timestamp("timestamp").notNull().defaultNow(),
+}, (table) => {
+  return {
+    userIdIdx: index("progress_user_id_idx").on(table.userId),
+    timestampIdx: index("progress_timestamp_idx").on(table.timestamp),
+  }
 });
 
 export const exercises = pgTable("exercises", {
   id: serial("id").primaryKey(),
-  userId: integer("user_id").notNull(),
-  type: text("type").notNull(), 
-  intensity: text("intensity"), 
-  duration: integer("duration"), 
-  description: text("description"), 
+  userId: integer("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: 'cascade' }),
+  type: text("type").notNull(),
+  intensity: text("intensity"),
+  duration: integer("duration"),
+  description: text("description"),
   timestamp: timestamp("timestamp").notNull().defaultNow(),
+}, (table) => {
+  return {
+    userIdIdx: index("exercises_user_id_idx").on(table.userId),
+    timestampIdx: index("exercises_timestamp_idx").on(table.timestamp),
+  }
 });
 
-export const insertUserSchema = createInsertSchema(users).omit({ id: true });
-export const insertMealSchema = createInsertSchema(meals).omit({ id: true, timestamp: true });
-export const insertProgressSchema = createInsertSchema(progress).omit({ id: true, timestamp: true });
-export const insertExerciseSchema = createInsertSchema(exercises).omit({ id: true, timestamp: true });
+// Enhanced validation schemas
+export const insertUserSchema = createInsertSchema(users)
+  .omit({ id: true })
+  .extend({
+    gender: z.enum(["male", "female", "other"]),
+    activityLevel: z.enum(["sedentary", "light", "moderate", "active", "very_active"]),
+    height: z.number().min(50).max(300),
+    weight: z.number().min(20).max(500),
+    targetWeight: z.number().min(20).max(500),
+    workoutsPerWeek: z.number().min(0).max(14),
+  });
+
+export const insertMealSchema = createInsertSchema(meals)
+  .omit({ id: true, timestamp: true })
+  .extend({
+    calories: z.number().min(0).max(5000),
+    protein: z.number().min(0).max(500),
+    carbs: z.number().min(0).max(500),
+    fat: z.number().min(0).max(500),
+  });
+
+export const insertProgressSchema = createInsertSchema(progress)
+  .omit({ id: true, timestamp: true })
+  .extend({
+    weight: z.number().min(20).max(500),
+  });
+
+export const insertExerciseSchema = createInsertSchema(exercises)
+  .omit({ id: true, timestamp: true })
+  .extend({
+    type: z.enum(["cardio", "strength", "flexibility", "sports", "other"]),
+    intensity: z.enum(["low", "medium", "high"]).optional(),
+    duration: z.number().min(1).max(480).optional(),
+  });
 
 export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
