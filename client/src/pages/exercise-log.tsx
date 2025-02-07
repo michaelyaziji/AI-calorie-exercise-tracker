@@ -23,6 +23,7 @@ export default function ExerciseLogPage() {
   const form = useForm({
     resolver: zodResolver(insertExerciseSchema),
     defaultValues: {
+      userId: 1, // Hardcoded for demo
       type: "",
       intensity: "medium",
       duration: 15,
@@ -31,7 +32,9 @@ export default function ExerciseLogPage() {
   });
 
   const mutation = useMutation({
-    mutationFn: (data: any) => apiRequest("/api/exercises", "POST", data),
+    mutationFn: async (data: any) => {
+      return await apiRequest('/api/exercises', 'POST', data);
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/exercises"] });
       toast({
@@ -41,13 +44,27 @@ export default function ExerciseLogPage() {
       setSelectedType(null);
       form.reset();
     },
+    onError: (error: any) => {
+      toast({
+        title: "Failed to log exercise",
+        description: error.message || "Something went wrong",
+        variant: "destructive",
+      });
+    },
   });
 
   const onSubmit = (data: any) => {
-    mutation.mutate({
-      ...data,
-      userId: 1, // Hardcoded for demo
-    });
+    if (selectedType === "custom") {
+      mutation.mutate(data);
+    } else {
+      mutation.mutate({
+        userId: 1, // Hardcoded for demo
+        type: selectedType,
+        intensity,
+        duration,
+        description: `${selectedType} workout for ${duration} minutes at ${intensity} intensity`,
+      });
+    }
   };
 
   const renderExerciseTypeSelection = () => (
@@ -149,18 +166,6 @@ export default function ExerciseLogPage() {
     </Card>
   );
 
-  const handleSubmit = () => {
-    if (selectedType === "custom") {
-      form.handleSubmit(onSubmit)();
-    } else {
-      onSubmit({
-        type: selectedType,
-        intensity,
-        duration,
-      });
-    }
-  };
-
   return (
     <div className="max-w-4xl mx-auto p-6 space-y-6">
       <h1 className="text-2xl font-bold">Log Exercise</h1>
@@ -171,8 +176,12 @@ export default function ExerciseLogPage() {
         <div className="space-y-6">
           {renderIntensitySelection()}
           {renderDurationSelection()}
-          <Button onClick={handleSubmit} className="w-full">
-            Add Exercise
+          <Button 
+            onClick={form.handleSubmit(onSubmit)} 
+            className="w-full"
+            disabled={mutation.isPending}
+          >
+            {mutation.isPending ? "Saving..." : "Add Exercise"}
           </Button>
         </div>
       )}
