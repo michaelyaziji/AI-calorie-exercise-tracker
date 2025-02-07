@@ -29,6 +29,10 @@ type OnboardingStep = "credentials" | "gender" | "measurements" | "activity" | "
 
 const STEPS = ["credentials", "gender", "measurements", "activity", "social"] as const;
 
+type FormData = z.infer<typeof insertUserSchema> & {
+  confirmPassword: string;
+};
+
 const stepValidation = {
   credentials: z.object({
     username: z.string().min(3, "Username must be at least 3 characters"),
@@ -66,7 +70,7 @@ export default function OnboardingPage() {
   const currentStepIndex = STEPS.indexOf(step);
   const progress = ((currentStepIndex + 1) / STEPS.length) * 100;
 
-  const form = useForm({
+  const form = useForm<FormData>({
     resolver: zodResolver(insertUserSchema.extend({
       confirmPassword: z.string(),
     })),
@@ -74,7 +78,7 @@ export default function OnboardingPage() {
       username: "",
       password: "",
       confirmPassword: "",
-      gender: "",
+      gender: undefined,
       height: 170,
       weight: 70,
       targetWeight: 65,
@@ -82,11 +86,11 @@ export default function OnboardingPage() {
       workoutsPerWeek: 3,
       socialSource: "",
     },
-    mode: "onChange",
+    mode: "onTouched",
   });
 
   const createUser = useMutation({
-    mutationFn: async (data: any) => {
+    mutationFn: async (data: FormData) => {
       const hashedPassword = await bcrypt.hash(data.password, 10);
       const { confirmPassword, ...userData } = {
         ...data,
@@ -115,6 +119,7 @@ export default function OnboardingPage() {
   const validateCurrentStep = () => {
     const currentStepSchema = stepValidation[step];
     const currentStepData = form.getValues();
+    console.log('Validating step:', step, 'with data:', currentStepData);
 
     try {
       currentStepSchema.parse(currentStepData);
@@ -129,11 +134,15 @@ export default function OnboardingPage() {
           });
         });
       }
+      console.error('Validation error:', error);
       return false;
     }
   };
 
-  const onSubmit = form.handleSubmit((data) => {
+  const onSubmit = (data: FormData) => {
+    console.log('Form submitted with data:', data);
+    console.log('Current step:', step);
+
     if (step !== "social") {
       if (validateCurrentStep()) {
         const nextSteps: Record<OnboardingStep, OnboardingStep> = {
@@ -148,9 +157,10 @@ export default function OnboardingPage() {
     } else {
       createUser.mutate(data);
     }
-  });
+  };
 
   const isLoading = createUser.isPending;
+  console.log('Form errors:', form.formState.errors);
 
   return (
     <div className="container max-w-md mx-auto px-4 pt-8">
@@ -162,7 +172,7 @@ export default function OnboardingPage() {
       </div>
 
       <Form {...form}>
-        <form onSubmit={onSubmit} className="space-y-8">
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
           {step === "credentials" && (
             <Card>
               <CardContent className="pt-6">
@@ -188,9 +198,9 @@ export default function OnboardingPage() {
                       <FormItem>
                         <FormLabel>Password</FormLabel>
                         <FormControl>
-                          <Input 
-                            type="password" 
-                            {...field} 
+                          <Input
+                            type="password"
+                            {...field}
                             autoComplete="new-password"
                           />
                         </FormControl>
@@ -208,8 +218,8 @@ export default function OnboardingPage() {
                       <FormItem>
                         <FormLabel>Confirm Password</FormLabel>
                         <FormControl>
-                          <Input 
-                            type="password" 
+                          <Input
+                            type="password"
                             {...field}
                             autoComplete="new-password"
                           />
@@ -334,7 +344,7 @@ export default function OnboardingPage() {
                     <FormItem>
                       <FormControl>
                         <RadioGroup
-                          onValueChange={(val) => field.onChange(parseInt(val))}
+                          onValueChange={(val) => field.onChange(parseInt(val, 10))}
                           defaultValue={field.value.toString()}
                           className="flex flex-col gap-4"
                         >
