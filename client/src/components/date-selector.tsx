@@ -54,32 +54,32 @@ export default function DateSelector({ onDateChange, selectedDate }: DateSelecto
           variant="ghost"
           size="icon"
           onClick={scrollPrev}
-          className="h-8 w-8"
+          className="h-6 w-6"
         >
-          <ChevronLeft className="h-4 w-4" />
+          <ChevronLeft className="h-3 w-3" />
         </Button>
       </div>
-      
-      <div className="overflow-hidden mx-8" ref={emblaRef}>
+
+      <div className="overflow-hidden mx-6" ref={emblaRef}>
         <div className="flex touch-pan-y">
           {dates.map((date, i) => (
             <div
               key={i}
-              className="flex-[0_0_33.33%] min-w-0 relative px-2"
+              className="flex-[0_0_33.33%] min-w-0 relative px-1"
             >
               <Button
                 variant={isSameDay(date, selectedDate) ? "default" : "ghost"}
-                className="w-full h-full py-6"
+                className="w-full h-full py-2"
                 onClick={() => onDateChange(date)}
               >
                 <div className="text-center">
-                  <div className="text-sm font-medium">
+                  <div className="text-xs font-medium">
                     {format(date, "EEE")}
                   </div>
-                  <div className="text-2xl font-bold">
+                  <div className="text-sm font-bold">
                     {format(date, "d")}
                   </div>
-                  <div className="text-xs text-muted-foreground">
+                  <div className="text-[10px] text-muted-foreground">
                     {format(date, "MMM")}
                   </div>
                 </div>
@@ -94,9 +94,9 @@ export default function DateSelector({ onDateChange, selectedDate }: DateSelecto
           variant="ghost"
           size="icon"
           onClick={scrollNext}
-          className="h-8 w-8"
+          className="h-6 w-6"
         >
-          <ChevronRight className="h-4 w-4" />
+          <ChevronRight className="h-3 w-3" />
         </Button>
       </div>
     </div>
