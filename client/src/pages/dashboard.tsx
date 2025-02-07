@@ -4,7 +4,8 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import ProgressChart from "@/components/progress-chart";
 import DailyRecommendations from "@/components/daily-recommendations";
 import { Skeleton } from "@/components/ui/skeleton";
-import type { User, Meal, Progress as ProgressType } from "@shared/schema";
+import type { User, Meal, Progress as ProgressType, Exercise } from "@shared/schema";
+import { format } from "date-fns";
 
 export default function DashboardPage() {
   const { data: user, isLoading: isLoadingUser } = useQuery<User>({
@@ -15,11 +16,15 @@ export default function DashboardPage() {
     queryKey: ["/api/users/1/meals"],
   });
 
+  const { data: exercises, isLoading: isLoadingExercises } = useQuery<Exercise[]>({
+    queryKey: ["/api/users/1/exercises"],
+  });
+
   const { data: progress, isLoading: isLoadingProgress } = useQuery<ProgressType[]>({
     queryKey: ["/api/users/1/progress"],
   });
 
-  if (isLoadingUser || isLoadingMeals || isLoadingProgress) {
+  if (isLoadingUser || isLoadingMeals || isLoadingProgress || isLoadingExercises) {
     return (
       <div className="space-y-4">
         <Skeleton className="h-[100px] w-full" />
@@ -29,17 +34,24 @@ export default function DashboardPage() {
     );
   }
 
-  if (!user || !meals || !progress) {
+  if (!user || !meals || !progress || !exercises) {
     return <div>Error loading data</div>;
   }
 
-  // Filter today's meals
+  // Filter today's data
   const today = new Date();
   today.setHours(0, 0, 0, 0);
+
   const todaysMeals = meals.filter(meal => {
     const mealDate = new Date(meal.timestamp);
     mealDate.setHours(0, 0, 0, 0);
     return mealDate.getTime() === today.getTime();
+  });
+
+  const todaysExercises = exercises.filter(exercise => {
+    const exerciseDate = new Date(exercise.timestamp);
+    exerciseDate.setHours(0, 0, 0, 0);
+    return exerciseDate.getTime() === today.getTime();
   });
 
   const weightProgress = ((user.weight - user.targetWeight) / (user.weight - user.targetWeight)) * 100;
@@ -67,42 +79,82 @@ export default function DashboardPage() {
         <ProgressChart data={progress} />
       )}
 
-      {meals.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Latest Meal</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex gap-6">
-              <img
-                src={meals[meals.length - 1].imageUrl}
-                alt="Latest meal"
-                className="w-32 h-32 rounded-lg object-cover"
-              />
-              <div className="flex-1">
-                <div className="grid grid-cols-3 gap-4 text-center">
-                  <div>
-                    <div className="text-2xl font-bold">{meals[meals.length - 1].protein}g</div>
-                    <div className="text-sm text-muted-foreground">Protein</div>
-                  </div>
-                  <div>
-                    <div className="text-2xl font-bold">{meals[meals.length - 1].carbs}g</div>
-                    <div className="text-sm text-muted-foreground">Carbs</div>
-                  </div>
-                  <div>
-                    <div className="text-2xl font-bold">{meals[meals.length - 1].fat}g</div>
-                    <div className="text-sm text-muted-foreground">Fat</div>
+      <div className="grid gap-6 md:grid-cols-2">
+        {meals.length > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Latest Meals</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {meals.slice(-2).reverse().map((meal) => (
+                <div key={meal.id} className="flex gap-4 border-b pb-4 last:border-0 last:pb-0">
+                  <img
+                    src={meal.imageUrl}
+                    alt="Meal"
+                    className="w-24 h-24 rounded-lg object-cover"
+                  />
+                  <div className="flex-1">
+                    <div className="text-sm text-muted-foreground">
+                      {format(new Date(meal.timestamp), "MMM d, h:mm a")}
+                    </div>
+                    <div className="grid grid-cols-4 gap-2 mt-2 text-center">
+                      <div>
+                        <div className="text-lg font-bold">{meal.calories}</div>
+                        <div className="text-xs text-muted-foreground">cal</div>
+                      </div>
+                      <div>
+                        <div className="text-lg font-bold">{meal.protein}g</div>
+                        <div className="text-xs text-muted-foreground">protein</div>
+                      </div>
+                      <div>
+                        <div className="text-lg font-bold">{meal.carbs}g</div>
+                        <div className="text-xs text-muted-foreground">carbs</div>
+                      </div>
+                      <div>
+                        <div className="text-lg font-bold">{meal.fat}g</div>
+                        <div className="text-xs text-muted-foreground">fat</div>
+                      </div>
+                    </div>
                   </div>
                 </div>
-                <div className="mt-4 text-center">
-                  <div className="text-3xl font-bold">{meals[meals.length - 1].calories}</div>
-                  <div className="text-sm text-muted-foreground">Calories</div>
+              ))}
+            </CardContent>
+          </Card>
+        )}
+
+        {exercises.length > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Recent Exercises</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {exercises.slice(-2).reverse().map((exercise) => (
+                <div key={exercise.id} className="border-b pb-4 last:border-0 last:pb-0">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <div className="font-medium capitalize">{exercise.type}</div>
+                      <div className="text-sm text-muted-foreground">
+                        {format(new Date(exercise.timestamp), "MMM d, h:mm a")}
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-sm font-medium">{exercise.duration} mins</div>
+                      <div className="text-xs text-muted-foreground capitalize">
+                        {exercise.intensity} intensity
+                      </div>
+                    </div>
+                  </div>
+                  {exercise.description && (
+                    <div className="mt-2 text-sm text-muted-foreground">
+                      {exercise.description}
+                    </div>
+                  )}
                 </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
+              ))}
+            </CardContent>
+          </Card>
+        )}
+      </div>
     </div>
   );
 }
