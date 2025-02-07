@@ -1,7 +1,9 @@
 import { useRef, useState } from "react";
-import { Camera } from "lucide-react";
+import { Camera, Barcode, Tag, Image } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+
+type ScanMode = "food" | "barcode" | "label" | "gallery";
 
 interface MealCameraProps {
   onCapture: (imageBase64: string) => void;
@@ -11,6 +13,7 @@ export default function MealCamera({ onCapture }: MealCameraProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isStreaming, setIsStreaming] = useState(false);
+  const [mode, setMode] = useState<ScanMode>("food");
 
   const startCamera = async () => {
     try {
@@ -49,8 +52,22 @@ export default function MealCamera({ onCapture }: MealCameraProps) {
     }
   };
 
+  const getModeTitle = () => {
+    switch (mode) {
+      case "food":
+        return "Scan Food";
+      case "barcode":
+        return "Barcode Scanner";
+      case "label":
+        return "Food Label";
+      case "gallery":
+        return "Gallery";
+    }
+  };
+
   return (
     <Card className="p-4">
+      <div className="text-lg font-semibold mb-4 text-center">{getModeTitle()}</div>
       <div className="relative aspect-square overflow-hidden rounded-lg">
         <video
           ref={videoRef}
@@ -59,7 +76,21 @@ export default function MealCamera({ onCapture }: MealCameraProps) {
           className="w-full h-full object-cover"
         />
         <canvas ref={canvasRef} className="hidden" />
+
+        {/* Mode-specific overlays */}
+        {mode === "barcode" && (
+          <div className="absolute inset-0 flex items-center justify-center">
+            <div className="w-64 h-20 border-2 border-primary rounded-lg" />
+          </div>
+        )}
+        {mode === "label" && (
+          <div className="absolute inset-0 flex items-center justify-center">
+            <div className="w-64 h-64 border-2 border-primary rounded-lg" />
+          </div>
+        )}
       </div>
+
+      {/* Camera controls */}
       <div className="flex justify-center mt-4 gap-4">
         {!isStreaming ? (
           <Button onClick={startCamera}>
@@ -71,6 +102,48 @@ export default function MealCamera({ onCapture }: MealCameraProps) {
             Take Photo
           </Button>
         )}
+      </div>
+
+      {/* Mode selector */}
+      <div className="fixed bottom-0 left-0 right-0 bg-background border-t p-4">
+        <div className="flex justify-around max-w-md mx-auto">
+          <Button
+            variant={mode === "food" ? "default" : "ghost"}
+            size="sm"
+            className="flex flex-col items-center gap-1"
+            onClick={() => setMode("food")}
+          >
+            <Camera className="h-5 w-5" />
+            <span className="text-xs">Scan Food</span>
+          </Button>
+          <Button
+            variant={mode === "barcode" ? "default" : "ghost"}
+            size="sm"
+            className="flex flex-col items-center gap-1"
+            onClick={() => setMode("barcode")}
+          >
+            <Barcode className="h-5 w-5" />
+            <span className="text-xs">Barcode</span>
+          </Button>
+          <Button
+            variant={mode === "label" ? "default" : "ghost"}
+            size="sm"
+            className="flex flex-col items-center gap-1"
+            onClick={() => setMode("label")}
+          >
+            <Tag className="h-5 w-5" />
+            <span className="text-xs">Food Label</span>
+          </Button>
+          <Button
+            variant={mode === "gallery" ? "default" : "ghost"}
+            size="sm"
+            className="flex flex-col items-center gap-1"
+            onClick={() => setMode("gallery")}
+          >
+            <Image className="h-5 w-5" />
+            <span className="text-xs">Gallery</span>
+          </Button>
+        </div>
       </div>
     </Card>
   );
