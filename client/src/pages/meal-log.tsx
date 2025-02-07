@@ -17,7 +17,6 @@ export default function MealLogPage() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const [, navigate] = useLocation();
-  const [timestamp] = useState(() => new Date());
 
   const analyzeMeal = useMutation({
     mutationFn: async (imageBase64: string) => {
@@ -73,14 +72,16 @@ export default function MealLogPage() {
       ) : (
         <Card>
           <CardContent className="pt-6">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="font-semibold text-xl">
-                {productInfo?.name || "New Meal"}
-              </h3>
-              <span className="text-sm text-muted-foreground">
-                {format(timestamp, "h:mm a")}
-              </span>
-            </div>
+            {productInfo && (
+              <div className="mb-4">
+                <div className="flex justify-between items-center">
+                  <h3 className="font-semibold text-xl">{productInfo.name}</h3>
+                  <span className="text-sm text-muted-foreground">
+                    {format(new Date(), "h:mm a")}
+                  </span>
+                </div>
+              </div>
+            )}
             <img
               src={`data:image/jpeg;base64,${capturedImage}`}
               alt="Captured meal"
