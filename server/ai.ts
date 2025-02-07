@@ -1,6 +1,5 @@
 import OpenAI from "openai";
 
-// the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 export interface NutritionInfo {
@@ -13,7 +12,7 @@ export interface NutritionInfo {
 export async function analyzeFoodImage(base64Image: string): Promise<NutritionInfo> {
   try {
     const response = await openai.chat.completions.create({
-      model: "gpt-4o",
+      model: "gpt-4-vision-preview",
       messages: [
         {
           role: "system",
@@ -38,7 +37,13 @@ export async function analyzeFoodImage(base64Image: string): Promise<NutritionIn
       response_format: { type: "json_object" }
     });
 
-    const result = JSON.parse(response.choices[0].message.content);
+    const content = response.choices[0].message.content;
+    if (!content) {
+      throw new Error("No response content from OpenAI");
+    }
+
+    const result = JSON.parse(content);
+
     return {
       calories: Math.round(result.calories),
       protein: Math.round(result.protein * 10) / 10,
@@ -46,6 +51,9 @@ export async function analyzeFoodImage(base64Image: string): Promise<NutritionIn
       fat: Math.round(result.fat * 10) / 10
     };
   } catch (error) {
-    throw new Error("Failed to analyze food image: " + error.message);
+    if (error instanceof Error) {
+      throw new Error("Failed to analyze food image: " + error.message);
+    }
+    throw new Error("Failed to analyze food image: An unknown error occurred");
   }
 }
