@@ -29,7 +29,10 @@ class DatabaseError extends Error {
 export class DatabaseStorage implements IStorage {
   sessionStore = new PostgresStore({
     pool,
-    tableName: 'session'
+    tableName: 'session',
+    createTableIfMissing: true,
+    pruneSessionInterval: 60 * 15, // Prune expired sessions every 15 minutes
+    errorLog: console.error.bind(console)
   });
 
   private async withErrorHandling<T>(operation: () => Promise<T>, errorMessage: string): Promise<T> {

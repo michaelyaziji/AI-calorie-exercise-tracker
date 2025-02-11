@@ -7,25 +7,25 @@ import rateLimit from 'express-rate-limit';
 const app = express();
 
 // Configure different rate limits for different routes
-const strictLimiter = rateLimit({
-  windowMs: 5 * 60 * 1000, // 5 minutes
-  limit: 200, // Limit each IP to 200 requests per window
+const registerLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minute
+  limit: 10, // 10 requests per minute
   standardHeaders: 'draft-7',
   legacyHeaders: false,
   message: { message: "Too many requests, please try again later." }
 });
 
 const authLimiter = rateLimit({
-  windowMs: 30 * 1000, // 30 seconds
-  limit: 50, // 50 requests per 30 seconds
+  windowMs: 60 * 1000, // 1 minute
+  limit: 10, // 10 requests per minute
   standardHeaders: 'draft-7',
   legacyHeaders: false,
   message: { message: "Too many requests, please try again later." }
 });
 
-const registerLimiter = rateLimit({
-  windowMs: 30 * 1000, // 30 seconds
-  limit: 100, // 100 requests per 30 seconds
+const strictLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minute
+  limit: 100, // 100 requests per minute
   standardHeaders: 'draft-7',
   legacyHeaders: false,
   message: { message: "Too many requests, please try again later." }
