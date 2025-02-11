@@ -23,6 +23,17 @@ async function waitForConnection(pool: Pool, maxAttempts = 5): Promise<boolean> 
   return false;
 }
 
+async function checkExistingTables(pool: Pool): Promise<boolean> {
+  const result = await pool.query(`
+    SELECT EXISTS (
+      SELECT FROM information_schema.tables 
+      WHERE table_schema = 'public'
+      AND table_name = 'users'
+    );
+  `);
+  return result.rows[0].exists;
+}
+
 async function main() {
   try {
     console.log('Configuring database connection...');
@@ -38,6 +49,9 @@ async function main() {
       process.exit(1);
     }
 
+    const isProduction = process.env.NODE_ENV === 'production';
+    const forceSetup = process.env.FORCE_DB_SETUP === 'true';
+
     console.log('Creating database pool...');
     console.log('Database URL:', process.env.DATABASE_URL?.replace(/:[^:@]*@/, ':****@')); // Hide password
     
@@ -52,18 +66,34 @@ async function main() {
     await waitForConnection(migrationPool);
     
     try {
+      // Check if tables already exist
+      const tablesExist = await checkExistingTables(migrationPool);
+      
+      if (tablesExist && isProduction && !forceSetup) {
+        console.log('Database tables already exist and we are in production.');
+        console.log('To force setup, set FORCE_DB_SETUP=true in environment variables.');
+        console.log('Skipping database setup to prevent data loss.');
+        return;
+      }
+
+      if (tablesExist && !forceSetup) {
+        console.log('Database tables already exist. Use FORCE_DB_SETUP=true to recreate them.');
+        return;
+      }
+
       console.log('Starting database setup...');
 
-      // Drop existing tables
-      console.log('Dropping existing tables...');
-      await migrationPool.query(`
-        DROP TABLE IF EXISTS "exercises" CASCADE;
-        DROP TABLE IF EXISTS "meals" CASCADE;
-        DROP TABLE IF EXISTS "progress" CASCADE;
-        DROP TABLE IF EXISTS "session" CASCADE;
-        DROP TABLE IF EXISTS "users" CASCADE;
-      `);
-      console.log('Existing tables dropped successfully');
+      if (tablesExist) {
+        console.log('Dropping existing tables...');
+        await migrationPool.query(`
+          DROP TABLE IF EXISTS "exercises" CASCADE;
+          DROP TABLE IF EXISTS "meals" CASCADE;
+          DROP TABLE IF EXISTS "progress" CASCADE;
+          DROP TABLE IF EXISTS "session" CASCADE;
+          DROP TABLE IF EXISTS "users" CASCADE;
+        `);
+        console.log('Existing tables dropped successfully');
+      }
 
       console.log('Creating users table...');
       // Create users table
