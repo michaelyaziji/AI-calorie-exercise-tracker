@@ -3,7 +3,12 @@ import { sql } from 'drizzle-orm';
 import * as schema from '@shared/schema';
 
 async function setupDatabase() {
+  console.log('Starting database setup...');
+  console.log('Database URL:', process.env.DATABASE_URL?.replace(/:[^:@]*@/, ':****@')); // Hide password
+  console.log('Environment:', process.env.NODE_ENV);
+  
   try {
+    console.log('Creating users table...');
     // Create users table
     await pool.query(`
       CREATE TABLE IF NOT EXISTS "users" (
@@ -24,7 +29,9 @@ async function setupDatabase() {
       );
       CREATE INDEX IF NOT EXISTS "username_idx" ON "users" ("username");
     `);
+    console.log('Users table created successfully');
 
+    console.log('Creating meals table...');
     // Create meals table
     await pool.query(`
       CREATE TABLE IF NOT EXISTS "meals" (
@@ -40,7 +47,9 @@ async function setupDatabase() {
       CREATE INDEX IF NOT EXISTS "meals_user_id_idx" ON "meals" ("user_id");
       CREATE INDEX IF NOT EXISTS "meals_timestamp_idx" ON "meals" ("timestamp");
     `);
+    console.log('Meals table created successfully');
 
+    console.log('Creating progress table...');
     // Create progress table
     await pool.query(`
       CREATE TABLE IF NOT EXISTS "progress" (
@@ -52,7 +61,9 @@ async function setupDatabase() {
       CREATE INDEX IF NOT EXISTS "progress_user_id_idx" ON "progress" ("user_id");
       CREATE INDEX IF NOT EXISTS "progress_timestamp_idx" ON "progress" ("timestamp");
     `);
+    console.log('Progress table created successfully');
 
+    console.log('Creating exercises table...');
     // Create exercises table
     await pool.query(`
       CREATE TABLE IF NOT EXISTS "exercises" (
@@ -67,7 +78,9 @@ async function setupDatabase() {
       CREATE INDEX IF NOT EXISTS "exercises_user_id_idx" ON "exercises" ("user_id");
       CREATE INDEX IF NOT EXISTS "exercises_timestamp_idx" ON "exercises" ("timestamp");
     `);
+    console.log('Exercises table created successfully');
 
+    console.log('Creating session table...');
     // Create session table
     await pool.query(`
       CREATE TABLE IF NOT EXISTS "session" (
@@ -77,15 +90,26 @@ async function setupDatabase() {
         CONSTRAINT "session_pkey" PRIMARY KEY ("sid")
       );
     `);
+    console.log('Session table created successfully');
 
     console.log('All database tables created successfully');
   } catch (error) {
     console.error('Error setting up database:', error);
+    if (error instanceof Error) {
+      console.error('Error message:', error.message);
+      console.error('Error stack:', error.stack);
+    }
     throw error;
   } finally {
+    console.log('Closing database connection...');
     await pool.end();
+    console.log('Database connection closed');
   }
 }
 
 // Execute the function
-setupDatabase().catch(console.error); 
+console.log('Starting database setup script...');
+setupDatabase().catch((error) => {
+  console.error('Fatal error in setup script:', error);
+  process.exit(1);
+}); 
