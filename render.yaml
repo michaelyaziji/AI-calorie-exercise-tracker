@@ -14,4 +14,19 @@ services:
       - key: SESSION_SECRET
         generateValue: true
       - key: OPENAI_API_KEY
-        sync: false 
+        sync: false
+      - key: API_URL
+        fromService:
+          type: web
+          name: calorie-tracker
+          property: host
+    headers:
+      - path: /*
+        name: X-Frame-Options
+        value: DENY
+      - path: /*
+        name: X-XSS-Protection
+        value: 1; mode=block
+      - path: /*
+        name: X-Content-Type-Options
+        value: nosniff 

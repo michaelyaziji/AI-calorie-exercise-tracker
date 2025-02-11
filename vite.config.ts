@@ -18,6 +18,15 @@ export default defineConfig({
   build: {
     outDir: path.resolve(__dirname, "dist/public"),
     emptyOutDir: true,
+    sourcemap: true,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          vendor: ['react', 'react-dom', 'wouter', '@tanstack/react-query'],
+          ui: ['@radix-ui/react-slot', '@radix-ui/react-label', 'lucide-react'],
+        }
+      }
+    }
   },
   optimizeDeps: {
     include: [
@@ -39,7 +48,9 @@ export default defineConfig({
     },
     proxy: {
       '/api': {
-        target: 'http://localhost:4000',
+        target: process.env.NODE_ENV === 'production' 
+          ? process.env.API_URL || 'http://localhost:10000'
+          : 'http://localhost:4000',
         changeOrigin: true
       }
     }

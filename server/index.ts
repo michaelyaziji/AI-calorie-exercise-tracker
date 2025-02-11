@@ -73,11 +73,17 @@ app.use((req, res, next) => {
   const server = registerRoutes(app);
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
+    console.error('Error:', err);
+    
     const status = err.status || err.statusCode || 500;
     const message = err.message || "Internal Server Error";
+    const stack = config.nodeEnv === 'development' ? err.stack : undefined;
 
-    res.status(status).json({ message });
-    throw err;
+    res.status(status).json({ 
+      message,
+      ...(stack && { stack }),
+      timestamp: new Date().toISOString()
+    });
   });
 
   if (config.nodeEnv === "development") {
@@ -88,5 +94,6 @@ app.use((req, res, next) => {
 
   server.listen(config.port, () => {
     log(`Server running at http://0.0.0.0:${config.port}`);
+    log(`Environment: ${config.nodeEnv}`);
   });
 })();
