@@ -1,6 +1,12 @@
-import { pgTable, text, serial, integer, boolean, jsonb, timestamp, real, index, primaryKey } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, boolean, jsonb, timestamp, real, index, primaryKey, varchar } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
+
+export const sessions = pgTable("session", {
+  sid: varchar("sid").primaryKey(),
+  sess: jsonb("sess").notNull(),
+  expire: timestamp("expire").notNull(),
+});
 
 export const users = pgTable("users", {
   id: serial("id").primaryKey(),
@@ -73,7 +79,7 @@ export const exercises = pgTable("exercises", {
 });
 
 // Enhanced validation schemas
-export const insertUserSchema = createInsertSchema(users)
+const userBaseSchema = createInsertSchema(users)
   .omit({ id: true })
   .extend({
     gender: z.enum(["male", "female", "other"]),
@@ -84,6 +90,10 @@ export const insertUserSchema = createInsertSchema(users)
     workoutsPerWeek: z.number().min(0).max(14),
     socialSource: z.enum(["instagram", "facebook", "tiktok", "youtube", "google", "tv"]),
   });
+
+export const insertUserSchema = userBaseSchema.extend({
+  confirmPassword: z.string().optional(),
+});
 
 export const insertMealSchema = createInsertSchema(meals)
   .omit({ id: true, timestamp: true })

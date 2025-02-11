@@ -1,6 +1,11 @@
 import { type User, type InsertUser, type Meal, type InsertMeal, type Progress, type InsertProgress, type Exercise, type InsertExercise, users, meals, progress, exercises } from "@shared/schema";
 import { db } from "./db";
 import { eq } from "drizzle-orm";
+import session from "express-session";
+import pgSession from "connect-pg-simple";
+import { pool } from "./db";
+
+const PostgresStore = pgSession(session);
 
 export interface IStorage {
   createUser(user: InsertUser): Promise<User>;
@@ -22,6 +27,11 @@ class DatabaseError extends Error {
 }
 
 export class DatabaseStorage implements IStorage {
+  sessionStore = new PostgresStore({
+    pool,
+    tableName: 'session'
+  });
+
   private async withErrorHandling<T>(operation: () => Promise<T>, errorMessage: string): Promise<T> {
     try {
       return await operation();

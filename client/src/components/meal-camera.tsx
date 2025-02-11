@@ -5,6 +5,7 @@ import { Card } from "@/components/ui/card";
 import { format } from "date-fns";
 import { lookupBarcode } from "@/lib/barcode-service";
 import type { ProductInfo } from "@/lib/barcode-service";
+import { useToast } from "@/hooks/use-toast";
 
 type ScanMode = "food" | "barcode" | "label" | "gallery";
 
@@ -19,18 +20,46 @@ export default function MealCamera({ onCapture }: MealCameraProps) {
   const [mode, setMode] = useState<ScanMode>("food");
   const [isProcessing, setIsProcessing] = useState(false);
   const [timestamp] = useState(() => new Date());
+  const { toast } = useToast();
 
   const startCamera = async () => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ 
-        video: { facingMode: "environment" } 
-      });
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        setIsStreaming(true);
+      const constraints = {
+        video: {
+          facingMode: { exact: "environment" },
+          width: { ideal: 1920 },
+          height: { ideal: 1080 }
+        }
+      };
+
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia(constraints);
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+          setIsStreaming(true);
+        }
+      } catch (err) {
+        // If exact environment camera fails, try without exact constraint
+        const fallbackConstraints = {
+          video: {
+            facingMode: "environment",
+            width: { ideal: 1920 },
+            height: { ideal: 1080 }
+          }
+        };
+        const stream = await navigator.mediaDevices.getUserMedia(fallbackConstraints);
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+          setIsStreaming(true);
+        }
       }
     } catch (error) {
       console.error("Error accessing camera:", error);
+      toast({
+        title: "Camera Access Error",
+        description: "Please make sure you've granted camera permissions in your browser settings.",
+        variant: "destructive"
+      });
     }
   };
 

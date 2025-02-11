@@ -53,7 +53,7 @@ export default function ExerciseLogPage() {
       return response.json() as Promise<Exercise>;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/users/1/exercises"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/exercises"] });
       toast({
         title: "Exercise logged successfully!",
         description: "Your workout has been recorded.",

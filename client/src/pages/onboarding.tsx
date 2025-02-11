@@ -35,9 +35,36 @@ const SOCIAL_OPTIONS = [
   { value: "tv", icon: Tv, label: "TV" },
 ] as const;
 
-const formSchema = insertUserSchema;
+// Create step-specific schemas
+const credentialsSchema = z.object({
+  username: z.string().min(1, "Username is required"),
+  password: z.string().min(6, "Password must be at least 6 characters"),
+  confirmPassword: z.string(),
+}).refine((data) => data.password === data.confirmPassword, {
+  message: "Passwords don't match",
+  path: ["confirmPassword"],
+});
 
-type FormData = z.infer<typeof formSchema>;
+const genderSchema = z.object({
+  gender: z.enum(["male", "female", "other"]),
+});
+
+const measurementsSchema = z.object({
+  height: z.number().min(50, "Height must be at least 50cm").max(300, "Height must be less than 300cm"),
+  weight: z.number().min(20, "Weight must be at least 20kg").max(500, "Weight must be less than 500kg"),
+  targetWeight: z.number().min(20, "Target weight must be at least 20kg").max(500, "Target weight must be less than 500kg"),
+});
+
+const activitySchema = z.object({
+  activityLevel: z.enum(["sedentary", "light", "moderate", "active", "very_active"]),
+  workoutsPerWeek: z.number().min(0, "Must be at least 0").max(14, "Must be less than 14"),
+});
+
+const socialSchema = z.object({
+  socialSource: z.enum(["instagram", "facebook", "tiktok", "youtube", "google", "tv"]),
+});
+
+type FormData = z.infer<typeof insertUserSchema>;
 
 const STEPS = ["credentials", "gender", "measurements", "activity", "social"] as const;
 
@@ -50,7 +77,7 @@ export default function OnboardingPage() {
   const progress = ((currentStepIndex + 1) / STEPS.length) * 100;
 
   const form = useForm<FormData>({
-    resolver: zodResolver(formSchema),
+    resolver: zodResolver(insertUserSchema),
     defaultValues: {
       username: "",
       password: "",
@@ -61,19 +88,17 @@ export default function OnboardingPage() {
       targetWeight: 65,
       activityLevel: "moderate",
       workoutsPerWeek: 3,
-      socialSource: "",
+      socialSource: "instagram",
     },
     mode: "onChange",
   });
 
   const createUser = useMutation({
     mutationFn: async (data: FormData) => {
-      const hashedPassword = await bcrypt.hash(data.password, 10);
       const { confirmPassword, ...userData } = {
         ...data,
-        password: hashedPassword,
+        password: data.password, // Password will be hashed on the server
       };
-
       const response = await apiRequest("POST", "/api/register", userData);
       if (!response.ok) {
         const error = await response.json();
@@ -86,7 +111,10 @@ export default function OnboardingPage() {
         title: "Welcome!",
         description: "Your account has been created successfully.",
       });
-      navigate("/dashboard");
+      // Add a small delay to ensure the server has processed the session
+      setTimeout(() => {
+        navigate("/dashboard");
+      }, 500);
     },
     onError: (error: Error) => {
       toast({
@@ -94,22 +122,60 @@ export default function OnboardingPage() {
         description: error.message,
         variant: "destructive",
       });
-      // Reset to credentials step if there's a username conflict
       if (error.message.includes("already exists")) {
         setStep("credentials");
       }
     },
   });
 
-  const onSubmit = async (data: FormData) => {
-    if (step === "credentials") {
-      if (!data.username || !data.password || !data.confirmPassword) {
-        return;
+  const validateCurrentStep = async () => {
+    const values = form.getValues();
+    try {
+      switch (step) {
+        case "credentials":
+          await credentialsSchema.parseAsync({
+            username: values.username,
+            password: values.password,
+            confirmPassword: values.confirmPassword,
+          });
+          break;
+        case "gender":
+          await genderSchema.parseAsync({ gender: values.gender });
+          break;
+        case "measurements":
+          await measurementsSchema.parseAsync({
+            height: values.height,
+            weight: values.weight,
+            targetWeight: values.targetWeight,
+          });
+          break;
+        case "activity":
+          await activitySchema.parseAsync({
+            activityLevel: values.activityLevel,
+            workoutsPerWeek: values.workoutsPerWeek,
+          });
+          break;
+        case "social":
+          await socialSchema.parseAsync({ socialSource: values.socialSource });
+          break;
       }
-      if (data.password !== data.confirmPassword) {
-        return;
+      return true;
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        error.errors.forEach((err) => {
+          form.setError(err.path[0] as any, {
+            type: "manual",
+            message: err.message,
+          });
+        });
       }
+      return false;
     }
+  };
+
+  const onSubmit = async (data: FormData) => {
+    const isValid = await validateCurrentStep();
+    if (!isValid) return;
 
     if (step !== "social") {
       const nextSteps: Record<OnboardingStep, OnboardingStep> = {
@@ -300,6 +366,7 @@ export default function OnboardingPage() {
                   name="activityLevel"
                   render={({ field }) => (
                     <FormItem>
+                      <FormLabel>Activity Level</FormLabel>
                       <FormControl>
                         <RadioGroup
                           onValueChange={field.onChange}
@@ -312,7 +379,7 @@ export default function OnboardingPage() {
                               className="flex items-center space-x-3 space-y-0"
                             >
                               <FormControl>
-                                <RadioGroupItem value={option.toLowerCase()} />
+                                <RadioGroupItem value={option.toLowerCase().replace(" ", "_")} />
                               </FormControl>
                               <FormLabel className="font-normal">{option}</FormLabel>
                             </FormItem>
@@ -328,8 +395,13 @@ export default function OnboardingPage() {
                   name="workoutsPerWeek"
                   render={({ field }) => (
                     <FormItem>
+                      <FormLabel>Workouts per Week</FormLabel>
                       <FormControl>
-                        <Input type="number" {...field} />
+                        <Input
+                          type="number"
+                          {...field}
+                          onChange={(e) => field.onChange(Number(e.target.value))}
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>

@@ -4,37 +4,53 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import NotFound from "@/pages/not-found";
 import OnboardingPage from "@/pages/onboarding";
+import LoginPage from "@/pages/login";
 import DashboardPage from "@/pages/dashboard";
 import MealLogPage from "@/pages/meal-log";
 import ExerciseLogPage from "@/pages/exercise-log";
 import NavBar from "@/components/nav-bar";
 import { FloatingActionButton } from "@/components/floating-action-button";
+import { AuthProvider, useAuth } from "@/hooks/use-auth";
+import { ProtectedRoute } from "@/components/protected-route";
+import { Loader2 } from "lucide-react";
+import { Redirect } from "wouter";
 
 function Router() {
+  const { user, isLoading } = useAuth();
+
   return (
     <Switch>
-      <Route path="/" component={OnboardingPage} />
-      <Route path="/dashboard" component={DashboardPage} />
-      <Route path="/meal-log" component={MealLogPage} />
-      <Route path="/exercise-log" component={ExerciseLogPage} />
+      <Route path="/">
+        {isLoading ? (
+          <div className="flex items-center justify-center min-h-screen">
+            <Loader2 className="h-8 w-8 animate-spin text-border" />
+          </div>
+        ) : user ? (
+          <Redirect to="/dashboard" />
+        ) : (
+          <OnboardingPage />
+        )}
+      </Route>
+      <Route path="/login" component={LoginPage} />
+      <ProtectedRoute path="/dashboard" component={DashboardPage} />
+      <ProtectedRoute path="/meal-log" component={MealLogPage} />
+      <ProtectedRoute path="/exercise-log" component={ExerciseLogPage} />
       <Route component={NotFound} />
     </Switch>
   );
 }
 
-function App() {
+export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <div className="min-h-screen bg-background">
-        <NavBar />
-        <main className="container mx-auto px-4 py-4">
+      <AuthProvider>
+        <div className="min-h-screen bg-background text-foreground">
           <Router />
-        </main>
-        <FloatingActionButton />
-      </div>
-      <Toaster />
+          <NavBar />
+          <FloatingActionButton />
+        </div>
+        <Toaster />
+      </AuthProvider>
     </QueryClientProvider>
   );
 }
-
-export default App;

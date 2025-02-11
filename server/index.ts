@@ -1,10 +1,43 @@
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
+import { config } from './config';
+import rateLimit from 'express-rate-limit';
 
 const app = express();
+
+// Configure different rate limits for different routes
+const strictLimiter = rateLimit({
+  windowMs: 5 * 60 * 1000, // 5 minutes
+  limit: 200, // Limit each IP to 200 requests per window
+  standardHeaders: 'draft-7',
+  legacyHeaders: false,
+  message: { message: "Too many requests, please try again later." }
+});
+
+const authLimiter = rateLimit({
+  windowMs: 30 * 1000, // 30 seconds
+  limit: 50, // 50 requests per 30 seconds
+  standardHeaders: 'draft-7',
+  legacyHeaders: false,
+  message: { message: "Too many requests, please try again later." }
+});
+
+const registerLimiter = rateLimit({
+  windowMs: 30 * 1000, // 30 seconds
+  limit: 100, // 100 requests per 30 seconds
+  standardHeaders: 'draft-7',
+  legacyHeaders: false,
+  message: { message: "Too many requests, please try again later." }
+});
+
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: false, limit: '10mb' }));
+
+// Apply rate limiting based on route
+app.use('/api/register', registerLimiter); // More lenient for registration
+app.use('/api/login', authLimiter);
+app.use('/api', strictLimiter); // Default limiter for other API routes
 
 app.use((req, res, next) => {
   const start = Date.now();
@@ -47,14 +80,13 @@ app.use((req, res, next) => {
     throw err;
   });
 
-  if (app.get("env") === "development") {
+  if (config.nodeEnv === "development") {
     await setupVite(app, server);
   } else {
     serveStatic(app);
   }
 
-  const PORT = Number(process.env.PORT) || 5000;
-  server.listen(PORT, () => {
-    log(`Server running at http://0.0.0.0:${PORT}`);
+  server.listen(config.port, () => {
+    log(`Server running at http://0.0.0.0:${config.port}`);
   });
 })();
