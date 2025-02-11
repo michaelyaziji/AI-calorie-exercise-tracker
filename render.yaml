@@ -2,7 +2,10 @@ services:
   - type: web
     name: calorie-tracker
     env: node
-    buildCommand: npm install && npm run build && npm run db:setup
+    buildCommand: |
+      npm install
+      npm run build
+      tsx server/migrations/setup.ts
     startCommand: npm start
     envVars:
       - key: NODE_ENV

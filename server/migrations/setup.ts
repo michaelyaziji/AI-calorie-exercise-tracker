@@ -1,16 +1,37 @@
 import { pool } from '../db';
 import { sql } from 'drizzle-orm';
 import * as schema from '@shared/schema';
+import * as dotenv from 'dotenv';
+import { resolve, dirname } from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
+// Load environment variables
+dotenv.config({ path: resolve(__dirname, '../../.env') });
+
+if (!process.env.DATABASE_URL) {
+  console.error('DATABASE_URL environment variable is not set');
+  process.exit(1);
+}
 
 async function setupDatabase() {
   console.log('Starting database setup...');
   console.log('Database URL:', process.env.DATABASE_URL?.replace(/:[^:@]*@/, ':****@')); // Hide password
   console.log('Environment:', process.env.NODE_ENV);
   
+  let currentPool = pool;
+  
   try {
+    // Test database connection
+    console.log('Testing database connection...');
+    await currentPool.query('SELECT 1');
+    console.log('Database connection successful');
+
     console.log('Creating users table...');
     // Create users table
-    await pool.query(`
+    await currentPool.query(`
       CREATE TABLE IF NOT EXISTS "users" (
         "id" serial PRIMARY KEY,
         "username" text NOT NULL UNIQUE,
@@ -33,7 +54,7 @@ async function setupDatabase() {
 
     console.log('Creating meals table...');
     // Create meals table
-    await pool.query(`
+    await currentPool.query(`
       CREATE TABLE IF NOT EXISTS "meals" (
         "id" serial PRIMARY KEY,
         "user_id" integer NOT NULL REFERENCES "users" ("id") ON DELETE CASCADE,
@@ -51,7 +72,7 @@ async function setupDatabase() {
 
     console.log('Creating progress table...');
     // Create progress table
-    await pool.query(`
+    await currentPool.query(`
       CREATE TABLE IF NOT EXISTS "progress" (
         "id" serial PRIMARY KEY,
         "user_id" integer NOT NULL REFERENCES "users" ("id") ON DELETE CASCADE,
@@ -65,7 +86,7 @@ async function setupDatabase() {
 
     console.log('Creating exercises table...');
     // Create exercises table
-    await pool.query(`
+    await currentPool.query(`
       CREATE TABLE IF NOT EXISTS "exercises" (
         "id" serial PRIMARY KEY,
         "user_id" integer NOT NULL REFERENCES "users" ("id") ON DELETE CASCADE,
@@ -82,7 +103,7 @@ async function setupDatabase() {
 
     console.log('Creating session table...');
     // Create session table
-    await pool.query(`
+    await currentPool.query(`
       CREATE TABLE IF NOT EXISTS "session" (
         "sid" varchar NOT NULL COLLATE "default",
         "sess" json NOT NULL,
@@ -91,6 +112,16 @@ async function setupDatabase() {
       );
     `);
     console.log('Session table created successfully');
+
+    // Verify tables were created
+    console.log('Verifying tables...');
+    const tables = await currentPool.query(`
+      SELECT table_name 
+      FROM information_schema.tables 
+      WHERE table_schema = 'public'
+      AND table_type = 'BASE TABLE';
+    `);
+    console.log('Created tables:', tables.rows.map(row => row.table_name));
 
     console.log('All database tables created successfully');
   } catch (error) {
@@ -102,8 +133,12 @@ async function setupDatabase() {
     throw error;
   } finally {
     console.log('Closing database connection...');
-    await pool.end();
-    console.log('Database connection closed');
+    try {
+      await currentPool.end();
+      console.log('Database connection closed');
+    } catch (error) {
+      console.error('Error closing database connection:', error);
+    }
   }
 }
 
