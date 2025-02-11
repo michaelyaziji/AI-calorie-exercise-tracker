@@ -3,9 +3,12 @@ services:
     name: calorie-tracker
     env: node
     buildCommand: |
+      echo "Installing dependencies..."
       npm install
+      echo "Building application..."
       npm run build
-      tsx server/migrations/setup.ts
+      echo "Setting up database..."
+      NODE_ENV=production node dist/migrations/setup.js
     startCommand: npm start
     envVars:
       - key: NODE_ENV
