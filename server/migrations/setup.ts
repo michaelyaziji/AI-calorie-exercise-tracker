@@ -2,9 +2,32 @@ import { Pool } from '@neondatabase/serverless';
 import ws from 'ws';
 import { neonConfig } from '@neondatabase/serverless';
 
+async function waitForConnection(pool: Pool, maxAttempts = 5): Promise<boolean> {
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      console.log(`Connection attempt ${attempt}/${maxAttempts}...`);
+      const result = await pool.query('SELECT 1');
+      if (result.rows[0]) {
+        console.log('Database connection successful');
+        return true;
+      }
+    } catch (error) {
+      console.error(`Connection attempt ${attempt} failed:`, error);
+      if (attempt === maxAttempts) {
+        throw error;
+      }
+      // Wait for 2 seconds before retrying
+      await new Promise(resolve => setTimeout(resolve, 2000));
+    }
+  }
+  return false;
+}
+
 async function main() {
   try {
     console.log('Configuring database connection...');
+    console.log('Node version:', process.version);
+    console.log('Environment:', process.env.NODE_ENV);
     
     // Configure WebSocket for Neon
     neonConfig.webSocketConstructor = ws;
@@ -16,28 +39,35 @@ async function main() {
     }
 
     console.log('Creating database pool...');
-    // Create a new pool for migrations
-    const migrationPool = new Pool({ connectionString: process.env.DATABASE_URL });
-
-    console.log('Starting database setup...');
     console.log('Database URL:', process.env.DATABASE_URL?.replace(/:[^:@]*@/, ':****@')); // Hide password
-    console.log('Environment:', process.env.NODE_ENV);
+    
+    // Create a new pool for migrations
+    const migrationPool = new Pool({ 
+      connectionString: process.env.DATABASE_URL,
+      connectionTimeoutMillis: 10000, // 10 seconds
+      max: 1 // Use only one connection for migrations
+    });
+
+    // Wait for connection
+    await waitForConnection(migrationPool);
     
     try {
-      // Test database connection
-      console.log('Testing database connection...');
-      const testResult = await migrationPool.query('SELECT 1');
-      console.log('Database connection successful:', testResult.rows);
+      console.log('Starting database setup...');
 
-      console.log('Creating users table...');
-      // Create users table
+      // Drop existing tables
+      console.log('Dropping existing tables...');
       await migrationPool.query(`
         DROP TABLE IF EXISTS "exercises" CASCADE;
         DROP TABLE IF EXISTS "meals" CASCADE;
         DROP TABLE IF EXISTS "progress" CASCADE;
         DROP TABLE IF EXISTS "session" CASCADE;
         DROP TABLE IF EXISTS "users" CASCADE;
+      `);
+      console.log('Existing tables dropped successfully');
 
+      console.log('Creating users table...');
+      // Create users table
+      await migrationPool.query(`
         CREATE TABLE "users" (
           "id" serial PRIMARY KEY,
           "username" text NOT NULL UNIQUE,
