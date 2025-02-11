@@ -34,6 +34,28 @@ async function checkExistingTables(pool: Pool): Promise<boolean> {
   return result.rows[0].exists;
 }
 
+async function verifyTables(pool: Pool): Promise<boolean> {
+  const expectedTables = ['users', 'meals', 'progress', 'exercises', 'session'];
+  const result = await pool.query(`
+    SELECT table_name 
+    FROM information_schema.tables 
+    WHERE table_schema = 'public'
+    AND table_type = 'BASE TABLE'
+    AND table_name = ANY($1);
+  `, [expectedTables]);
+
+  const existingTables = result.rows.map(row => row.table_name);
+  const missingTables = expectedTables.filter(table => !existingTables.includes(table));
+
+  if (missingTables.length > 0) {
+    console.error('Missing tables:', missingTables);
+    return false;
+  }
+
+  console.log('All required tables exist:', existingTables);
+  return true;
+}
+
 async function main() {
   try {
     console.log('Configuring database connection...');
@@ -190,6 +212,16 @@ async function main() {
       console.log('Created tables:', tables.rows.map(row => row.table_name));
 
       console.log('All database tables created successfully');
+
+      // After creating all tables, verify they exist
+      console.log('Verifying all tables...');
+      const tablesVerified = await verifyTables(migrationPool);
+      
+      if (!tablesVerified) {
+        throw new Error('Database setup failed: Some tables are missing');
+      }
+
+      console.log('All database tables verified successfully');
     } finally {
       console.log('Closing database connection...');
       try {

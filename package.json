@@ -9,7 +9,7 @@
     "start": "NODE_ENV=production node dist/index.js",
     "check": "tsc",
     "db:push": "drizzle-kit push",
-    "db:setup": "node --experimental-specifier-resolution=node --experimental-modules --no-warnings dist/migrations/setup.js"
+    "db:setup": "NODE_OPTIONS='--experimental-specifier-resolution=node --experimental-modules --no-warnings' node dist/migrations/setup.js"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.1",
